@@ -116,6 +116,7 @@ class GameNotifier extends Notifier<GameStateModel> {
             turnScore: 0,
             isDrawer: false,
             guessedWord: false,
+            voted: false,
           ),
         );
         state = state.copyWith(players: players, isDrawer: me.isDrawer);
@@ -137,7 +138,12 @@ class GameNotifier extends Notifier<GameStateModel> {
       case 'system':
         final msg = data['content'] as String;
         final newChats = List<Map<String, String>>.from(state.chatMessages)
-          ..add({'sender': 'System', 'content': msg, 'isSystem': 'true'});
+          ..add({
+            'sender': 'System',
+            'content': msg,
+            'isSystem': 'true',
+            'colorIndex': '${state.chatMessages.length % 2}',
+          });
         state = state.copyWith(systemMessage: msg, chatMessages: newChats);
         break;
 
@@ -146,6 +152,19 @@ class GameNotifier extends Notifier<GameStateModel> {
           ..add({
             'sender': data['sender'],
             'content': data['content'],
+            'isSystem': 'false',
+            'isShadow': data['isShadow'] ?? 'false',
+            'colorIndex': '${state.chatMessages.length % 2}',
+          });
+        state = state.copyWith(chatMessages: newChats);
+        break;
+
+      case 'vote_update':
+        final newChats = List<Map<String, String>>.from(state.chatMessages)
+          ..add({
+            'sender': data['sender'],
+            'voteType': data['vote'],
+            'isVote': 'true',
             'isSystem': 'false',
           });
         state = state.copyWith(chatMessages: newChats);
@@ -174,6 +193,13 @@ class GameNotifier extends Notifier<GameStateModel> {
     ref.read(webSocketServiceProvider).sendMessage({
       'type': 'chat',
       'content': content,
+    });
+  }
+
+  void vote(String voteType) {
+    ref.read(webSocketServiceProvider).sendMessage({
+      'type': 'vote',
+      'vote': voteType,
     });
   }
 

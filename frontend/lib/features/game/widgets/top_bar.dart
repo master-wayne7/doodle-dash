@@ -13,13 +13,26 @@ class TopBar extends ConsumerWidget {
     final gameState = gameStateModel.state;
     final systemMessage = gameStateModel.systemMessage;
 
-    String centerText = 'WAITING FOR PLAYERS';
+    String topText = 'WAITING FOR PLAYERS';
+    String bottomText = '';
+    int? wordLength;
+
     if (gameState == GameState.drawing) {
-      // The backend provides 'hint' text. For the drawer, it's the exact word.
-      // For guessers, it's the underscores (e.g. `_ _ p _ _`).
-      centerText = isDrawer ? gameStateModel.word : gameStateModel.hint;
+      if (isDrawer) {
+        topText = 'DRAW THIS';
+        bottomText = gameStateModel.word;
+      } else {
+        topText = 'GUESS THIS';
+        bottomText = gameStateModel.hint;
+        wordLength =
+            gameStateModel.hint
+                .split(' ')
+                .where((s) => s.isNotEmpty && s != '_')
+                .length +
+            gameStateModel.hint.split(' ').where((s) => s == '_').length;
+      }
     } else if (systemMessage != null) {
-      centerText = systemMessage;
+      topText = systemMessage;
     }
 
     return Container(
@@ -45,9 +58,41 @@ class TopBar extends ConsumerWidget {
               ),
             ],
           ),
-          Text(
-            centerText,
-            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          Expanded(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  topText,
+                  style: const TextStyle(fontSize: 16, color: Colors.black54),
+                ),
+                if (bottomText.isNotEmpty)
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        bottomText,
+                        style: const TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 2.0,
+                        ),
+                      ),
+                      if (wordLength != null) ...[
+                        const SizedBox(width: 8),
+                        Text(
+                          '$wordLength',
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+              ],
+            ),
           ),
           Text(
             'Round ${gameStateModel.round}/${gameStateModel.maxRounds}',

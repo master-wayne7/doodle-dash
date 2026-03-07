@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:frontend/core/websocket/websocket_service.dart';
 import 'package:frontend/features/game/providers/game_provider.dart';
+import 'package:frontend/features/game/models/game_state.dart';
 
 class DrawnPath {
   final List<Offset> points;
@@ -159,9 +160,9 @@ class _DrawingBoardState extends ConsumerState<DrawingBoard> {
 
   @override
   Widget build(BuildContext context) {
+    final gameState = ref.watch(gameProvider);
     return Column(
       children: [
-        if (widget.isDrawer) _buildToolbar(),
         Expanded(
           child: Container(
             margin: const EdgeInsets.all(8.0),
@@ -174,24 +175,67 @@ class _DrawingBoardState extends ConsumerState<DrawingBoard> {
               borderRadius: BorderRadius.circular(12),
               child: LayoutBuilder(
                 builder: (context, constraints) {
-                  return GestureDetector(
-                    onPanStart: (details) => _onPanStart(details, constraints),
-                    onPanUpdate: (details) =>
-                        _onPanUpdate(details, constraints),
-                    onPanEnd: _onPanEnd,
-                    child: CustomPaint(
-                      painter: DrawingPainter(
-                        paths: _paths,
-                        currentPath: _currentPath,
+                  return Stack(
+                    children: [
+                      GestureDetector(
+                        onPanStart: widget.isDrawer
+                            ? (details) => _onPanStart(details, constraints)
+                            : null,
+                        onPanUpdate: widget.isDrawer
+                            ? (details) => _onPanUpdate(details, constraints)
+                            : null,
+                        onPanEnd: widget.isDrawer ? _onPanEnd : null,
+                        child: CustomPaint(
+                          painter: DrawingPainter(
+                            paths: _paths,
+                            currentPath: _currentPath,
+                          ),
+                          size: Size.infinite,
+                        ),
                       ),
-                      size: Size.infinite,
-                    ),
+                      if (!widget.isDrawer &&
+                          gameState.state == GameState.drawing &&
+                          !gameState.players
+                              .firstWhere(
+                                (p) => p.nickname == gameState.nickname,
+                              )
+                              .voted)
+                        Positioned(
+                          top: 10,
+                          right: 10,
+                          child: Row(
+                            children: [
+                              _VoteButton(
+                                icon: Icons.thumb_up_alt_outlined,
+                                color: Colors.green,
+                                onTap: () => ref
+                                    .read(gameProvider.notifier)
+                                    .vote('like'),
+                              ),
+                              const SizedBox(width: 8),
+                              _VoteButton(
+                                icon: Icons.thumb_down_alt_outlined,
+                                color: Colors.red,
+                                onTap: () => ref
+                                    .read(gameProvider.notifier)
+                                    .vote('dislike'),
+                              ),
+                            ],
+                          ),
+                        ),
+                    ],
                   );
                 },
               ),
             ),
           ),
         ),
+        if (widget.isDrawer)
+          _buildToolbar()
+        else
+          const SizedBox(
+            height: 52,
+          ), // Placeholder to maintain same canvas size (Toolbar height ~52)
       ],
     );
   }
@@ -286,4 +330,38 @@ class DrawingPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant DrawingPainter oldDelegate) => true;
+}
+
+class _VoteButton extends StatelessWidget {
+  final IconData icon;
+  final Color color;
+  final VoidCallback onTap;
+
+  const _VoteButton({
+    required this.icon,
+    required this.color,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.8),
+          shape: BoxShape.circle,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.1),
+              blurRadius: 4,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Icon(icon, color: color, size: 28),
+      ),
+    );
+  }
 }

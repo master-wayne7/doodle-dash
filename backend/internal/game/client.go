@@ -35,6 +35,8 @@ type Client struct {
 	TurnScore   int
 	IsDrawer    bool
 	GuessedWord bool
+	JoinedAt    time.Time
+	Voted       bool
 }
 
 // ReadPump pumps messages from the websocket connection to the room.
@@ -115,5 +117,18 @@ func (c *Client) WritePump() {
 				return
 			}
 		}
+	}
+}
+func (c *Client) SendPrivateMessage(content string) {
+	msg, _ := json.Marshal(map[string]interface{}{
+		"type":     "chat",
+		"sender":   "System",
+		"content":  content,
+		"isSystem": "true",
+		"isShadow": "true", // Use shadow styling for private proximity messages
+	})
+	select {
+	case c.Send <- msg:
+	default:
 	}
 }

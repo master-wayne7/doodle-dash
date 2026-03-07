@@ -13,12 +13,31 @@ class ChatBox extends ConsumerStatefulWidget {
 
 class _ChatBoxState extends ConsumerState<ChatBox> {
   final TextEditingController chatController = TextEditingController();
+  final FocusNode chatFocus = FocusNode();
+  final ValueNotifier<int> charCount = ValueNotifier<int>(0);
+
+  @override
+  void initState() {
+    super.initState();
+    chatController.addListener(() {
+      charCount.value = chatController.text.length;
+    });
+  }
+
+  @override
+  void dispose() {
+    chatController.dispose();
+    chatFocus.dispose();
+    charCount.dispose();
+    super.dispose();
+  }
 
   void sendChat(WidgetRef ref) {
     final text = chatController.text.trim();
     if (text.isNotEmpty) {
       ref.read(gameProvider.notifier).sendChat(text);
       chatController.clear();
+      chatFocus.requestFocus();
     }
   }
 
@@ -27,6 +46,12 @@ class _ChatBoxState extends ConsumerState<ChatBox> {
     final gameState = ref.watch(gameProvider);
     final chatMessages = gameState.chatMessages;
     final isDrawer = gameState.isDrawer;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!isDrawer && !chatFocus.hasFocus) {
+        FocusScope.of(context).requestFocus(chatFocus);
+      }
+    });
 
     return Container(
       width: widget.width,
@@ -40,26 +65,40 @@ class _ChatBoxState extends ConsumerState<ChatBox> {
           Expanded(
             child: ListView.builder(
               reverse: true,
-              itemCount: chatMessages.length,
+              itemCount: chatMessages
+                  .where((m) => m['isVote'] != 'true')
+                  .length,
               itemBuilder: (context, index) {
-                final msg = chatMessages[chatMessages.length - 1 - index];
+                final filtered = chatMessages
+                    .where((m) => m['isVote'] != 'true')
+                    .toList();
+                final msg = filtered[filtered.length - 1 - index];
                 final isSystem = msg['isSystem'] == 'true';
+                final isShadow = msg['isShadow'] == 'true';
+                final isDark = msg['colorIndex'] == '0';
 
-                return Padding(
+                return Container(
+                  width: double.infinity,
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 8.0,
-                    vertical: 4.0,
+                    horizontal: 12.0,
+                    vertical: 8.0,
+                  ),
+                  decoration: BoxDecoration(
+                    color: isDark ? Colors.grey.shade100 : Colors.white,
                   ),
                   child: RichText(
                     text: TextSpan(
                       style: TextStyle(
                         color: isSystem
                             ? Colors.green.shade700
-                            : Colors.black87,
+                            : (isShadow
+                                  ? Colors.grey.shade600
+                                  : Colors.black87),
                         fontWeight: isSystem
                             ? FontWeight.bold
                             : FontWeight.normal,
                         fontFamily: 'Comic Sans MS',
+                        fontSize: 14,
                       ),
                       children: [
                         if (!isSystem)
@@ -83,8 +122,10 @@ class _ChatBoxState extends ConsumerState<ChatBox> {
                 Expanded(
                   child: TextField(
                     controller: chatController,
+                    focusNode: chatFocus,
+                    autofocus: true,
                     decoration: const InputDecoration(
-                      hintText: 'Type your guess here...',
+                      hintText: 'Type your chat here...',
                       border: OutlineInputBorder(),
                       contentPadding: EdgeInsets.symmetric(
                         horizontal: 12,
@@ -92,13 +133,23 @@ class _ChatBoxState extends ConsumerState<ChatBox> {
                       ),
                     ),
                     onSubmitted: (_) => sendChat(ref),
-                    enabled: !isDrawer,
                   ),
                 ),
-                IconButton(
-                  icon: const Icon(Icons.send),
-                  color: const Color(0xFF5A4AE3),
-                  onPressed: isDrawer ? null : () => sendChat(ref),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  child: ValueListenableBuilder<int>(
+                    valueListenable: charCount,
+                    builder: (context, count, child) {
+                      return Text(
+                        '$count',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: isDrawer ? Colors.grey : Colors.black87,
+                        ),
+                      );
+                    },
+                  ),
                 ),
               ],
             ),
