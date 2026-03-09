@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:frontend/core/websocket/websocket_service.dart';
+import 'package:frontend/core/audio/audio_service.dart';
 import 'package:frontend/features/game/models/game_state.dart';
 import 'package:frontend/features/game/models/player.dart';
 
@@ -20,6 +21,7 @@ class GameStateModel {
   final String drawerName;
   final String hint;
   final String word;
+  final bool isKicked;
 
   GameStateModel({
     this.players = const [],
@@ -37,6 +39,7 @@ class GameStateModel {
     this.drawerName = '',
     this.hint = '',
     this.word = '',
+    this.isKicked = false,
   });
 
   GameStateModel copyWith({
@@ -55,6 +58,7 @@ class GameStateModel {
     String? drawerName,
     String? hint,
     String? word,
+    bool? isKicked,
   }) {
     return GameStateModel(
       players: players ?? this.players,
@@ -72,6 +76,7 @@ class GameStateModel {
       drawerName: drawerName ?? this.drawerName,
       hint: hint ?? this.hint,
       word: word ?? this.word,
+      isKicked: isKicked ?? this.isKicked,
     );
   }
 }
@@ -84,7 +89,7 @@ class GameNotifier extends Notifier<GameStateModel> {
     return GameStateModel();
   }
 
-  void init(String nickname, String roomId) {
+  void init(String nickname, String roomId, [Map<String, dynamic>? avatar]) {
     state = state.copyWith(nickname: nickname, roomId: roomId);
     final wsService = ref.read(webSocketServiceProvider);
 
@@ -96,6 +101,7 @@ class GameNotifier extends Notifier<GameStateModel> {
         'type': 'join_room',
         'nickname': nickname,
         'room_id': roomId,
+        'avatar': avatar ?? {'color': 11, 'eyes': 30, 'mouth': 23},
       });
     });
   }
@@ -107,6 +113,13 @@ class GameNotifier extends Notifier<GameStateModel> {
       case 'players':
         final pList = data['players'] as List;
         final players = pList.map((p) => Player.fromJson(p)).toList();
+
+        if (players.length > state.players.length) {
+          ref.read(audioServiceProvider).playJoin();
+        } else if (players.length < state.players.length) {
+          ref.read(audioServiceProvider).playLeave();
+        }
+
         final me = players.firstWhere(
           (p) => p.nickname == state.nickname,
           orElse: () => Player(
@@ -117,6 +130,7 @@ class GameNotifier extends Notifier<GameStateModel> {
             isDrawer: false,
             guessedWord: false,
             voted: false,
+            avatar: AvatarData(color: 11, eyes: 30, mouth: 23),
           ),
         );
         state = state.copyWith(players: players, isDrawer: me.isDrawer);
@@ -124,6 +138,47 @@ class GameNotifier extends Notifier<GameStateModel> {
 
       case 'game_state':
         final gameState = parseGameState(data['state']);
+        final oldState = state.state;
+
+        if (oldState == GameState.choosing && gameState == GameState.drawing) {
+          ref.read(audioServiceProvider).playRoundStart();
+        } else if (oldState == GameState.drawing &&
+            gameState == GameState.turnEnd) {
+          ref.read(audioServiceProvider).stopTick();
+
+          final me = state.players.firstWhere(
+            (p) => p.nickname == state.nickname,
+            orElse: () => Player(
+              id: '',
+              nickname: '',
+              score: 0,
+              turnScore: 0,
+              isDrawer: false,
+              guessedWord: false,
+              voted: false,
+              avatar: AvatarData(color: 0, eyes: 0, mouth: 0),
+            ),
+          );
+
+          bool anyoneGuessed = state.players.any(
+            (p) => !p.isDrawer && p.guessedWord,
+          );
+
+          if (me.isDrawer) {
+            if (anyoneGuessed) {
+              ref.read(audioServiceProvider).playRoundEndSuccess();
+            } else {
+              ref.read(audioServiceProvider).playRoundEndFailure();
+            }
+          } else {
+            if (me.guessedWord) {
+              ref.read(audioServiceProvider).playRoundEndSuccess();
+            } else {
+              ref.read(audioServiceProvider).playRoundEndFailure();
+            }
+          }
+        }
+
         state = state.copyWith(
           state: gameState,
           wordChoices: gameState != GameState.choosing ? [] : state.wordChoices,
@@ -137,23 +192,51 @@ class GameNotifier extends Notifier<GameStateModel> {
 
       case 'system':
         final msg = data['content'] as String;
+        if (msg.endsWith('guessed the word!')) {
+          ref.read(audioServiceProvider).playPlayerGuessed();
+        }
+
+        String color = 'green';
+        if (msg.endsWith('has joined the room')) {
+          color = 'blue';
+        } else if (msg.endsWith('has left the room')) {
+          color = 'red';
+        } else if (msg.contains('voted to kick')) {
+          color = 'yellow';
+        }
+
         final newChats = List<Map<String, String>>.from(state.chatMessages)
           ..add({
             'sender': 'System',
             'content': msg,
             'isSystem': 'true',
+            'color': color,
             'colorIndex': '${state.chatMessages.length % 2}',
           });
         state = state.copyWith(systemMessage: msg, chatMessages: newChats);
         break;
 
+      case 'kicked':
+        state = state.copyWith(isKicked: true);
+        break;
+
       case 'chat':
+        String color = 'black';
+        if (data['isShadow'] == 'true') {
+          color = 'shadow';
+        }
+        if (data['content'] != null &&
+            (data['content'] as String).endsWith('is close!')) {
+          color = 'yellow';
+        }
+
         final newChats = List<Map<String, String>>.from(state.chatMessages)
           ..add({
             'sender': data['sender'],
             'content': data['content'],
-            'isSystem': 'false',
+            'isSystem': data['isSystem'] ?? 'false',
             'isShadow': data['isShadow'] ?? 'false',
+            'color': color,
             'colorIndex': '${state.chatMessages.length % 2}',
           });
         state = state.copyWith(chatMessages: newChats);
@@ -177,6 +260,15 @@ class GameNotifier extends Notifier<GameStateModel> {
 
       case 'timer':
         final time = data['time_left'] as int;
+        if (state.state == GameState.drawing) {
+          if (time <= 10 && time > 0) {
+            ref.read(audioServiceProvider).startTick();
+          } else if (time <= 0) {
+            ref.read(audioServiceProvider).stopTick();
+          }
+        } else {
+          ref.read(audioServiceProvider).stopTick();
+        }
         final h = data['hint'] as String?;
         state = state.copyWith(timeLeft: time, hint: h ?? state.hint);
         break;
@@ -217,8 +309,16 @@ class GameNotifier extends Notifier<GameStateModel> {
     ref.read(webSocketServiceProvider).sendMessage(payload);
   }
 
+  void sendKickVote(String targetId) {
+    ref.read(webSocketServiceProvider).sendMessage({
+      'type': 'vote_kick',
+      'target': targetId,
+    });
+  }
+
   void disposeGame() {
     _sub?.cancel();
+    ref.read(audioServiceProvider).stopTick();
     ref.read(webSocketServiceProvider).disconnect();
   }
 }

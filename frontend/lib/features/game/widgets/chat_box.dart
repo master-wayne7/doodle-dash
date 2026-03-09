@@ -55,11 +55,8 @@ class _ChatBoxState extends ConsumerState<ChatBox> {
 
     return Container(
       width: widget.width,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade300),
-      ),
+      margin: EdgeInsets.only(bottom: 52),
+      decoration: BoxDecoration(color: Colors.white),
       child: Column(
         children: [
           Expanded(
@@ -74,8 +71,29 @@ class _ChatBoxState extends ConsumerState<ChatBox> {
                     .toList();
                 final msg = filtered[filtered.length - 1 - index];
                 final isSystem = msg['isSystem'] == 'true';
-                final isShadow = msg['isShadow'] == 'true';
                 final isDark = msg['colorIndex'] == '0';
+                final colorStr = msg['color'] ?? 'black';
+
+                Color textColor;
+                switch (colorStr) {
+                  case 'green':
+                    textColor = Colors.green.shade700;
+                    break;
+                  case 'red':
+                    textColor = Colors.red.shade700;
+                    break;
+                  case 'blue':
+                    textColor = Colors.blue.shade700;
+                    break;
+                  case 'yellow':
+                    textColor = Colors.orange.shade700;
+                    break;
+                  case 'shadow':
+                    textColor = Colors.green.shade200;
+                    break;
+                  default:
+                    textColor = Colors.black87;
+                }
 
                 return Container(
                   width: double.infinity,
@@ -84,16 +102,18 @@ class _ChatBoxState extends ConsumerState<ChatBox> {
                     vertical: 8.0,
                   ),
                   decoration: BoxDecoration(
-                    color: isDark ? Colors.grey.shade100 : Colors.white,
+                    color: msg['content'].toString().contains("guessed")
+                        ? isDark
+                              ? Colors.green.shade200
+                              : Colors.green.shade100
+                        : isDark
+                        ? Colors.grey.shade200
+                        : Colors.white,
                   ),
                   child: RichText(
                     text: TextSpan(
                       style: TextStyle(
-                        color: isSystem
-                            ? Colors.green.shade700
-                            : (isShadow
-                                  ? Colors.grey.shade600
-                                  : Colors.black87),
+                        color: textColor,
                         fontWeight: isSystem
                             ? FontWeight.bold
                             : FontWeight.normal,

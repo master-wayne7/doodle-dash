@@ -89,6 +89,16 @@ func (h *Hub) ProcessMessage(c *Client, msg map[string]interface{}) {
 		}
 
 		c.Nickname = nickname
+		c.ID = generateRandomString(12)
+		c.JoinedAt = time.Now()
+
+		if avatarMap, ok := msg["avatar"].(map[string]interface{}); ok {
+			c.Avatar.Color = int(avatarMap["color"].(float64))
+			c.Avatar.Eyes = int(avatarMap["eyes"].(float64))
+			c.Avatar.Mouth = int(avatarMap["mouth"].(float64))
+		} else {
+			c.Avatar = Avatar{Color: 11, Eyes: 30, Mouth: 23}
+		}
 
 		room, exists := h.Rooms[roomID]
 		if !exists {

@@ -35,6 +35,7 @@ type Room struct {
 	TurnQueue   []*Client
 	DrawHistory []map[string]interface{}
 	HintIndices []int
+	VoteKicks   map[string]map[string]bool // TargetID -> {VoterID: true}
 
 	TimeLeft    int
 	tickerMutex sync.Mutex
@@ -50,6 +51,7 @@ func NewRoom(id string, hub *Hub) *Room {
 		Leave:     make(chan *Client),
 		State:     StateLobby,
 		MaxRounds: 3,
+		VoteKicks: make(map[string]map[string]bool),
 	}
 	if id != "test" {
 		go r.runTimer()
@@ -119,6 +121,7 @@ func (r *Room) changeState(newState GameState) {
 		for c := range r.Clients {
 			c.Score += c.TurnScore
 		}
+		r.VoteKicks = make(map[string]map[string]bool)
 		r.broadcastMessageLocked([]byte(`{"type": "draw", "action": "clear"}`))
 		r.broadcastSystemMessageLocked(fmt.Sprintf("Turn over! The word was: %s", r.CurrentWord))
 		r.broadcastGameStateLocked()

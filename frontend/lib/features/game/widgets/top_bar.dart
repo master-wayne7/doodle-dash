@@ -35,36 +35,50 @@ class TopBar extends ConsumerWidget {
       topText = systemMessage;
     }
 
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 4)],
-      ),
+    return DecoratedBox(
+      decoration: BoxDecoration(color: Colors.white),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
+          // Left side: Timer and Round
           Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              const Icon(Icons.timer, color: Colors.amber, size: 28),
-              const SizedBox(width: 8),
+              Stack(
+                alignment: Alignment.center,
+                children: [
+                  Image.asset('assets/images/clock.gif', height: 48),
+                  Positioned(
+                    top: 14,
+                    child: Text(
+                      '${gameStateModel.timeLeft}',
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(width: 16),
               Text(
-                '${gameStateModel.timeLeft}s',
+                'Round ${gameStateModel.round} of ${gameStateModel.maxRounds}',
                 style: const TextStyle(
-                  fontSize: 20,
+                  fontSize: 18,
                   fontWeight: FontWeight.bold,
                 ),
               ),
             ],
           ),
+
+          // Center: Word / Hint
           Expanded(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
                   topText,
-                  style: const TextStyle(fontSize: 16, color: Colors.black54),
+                  style: const TextStyle(fontSize: 14, color: Colors.black54),
                 ),
                 if (bottomText.isNotEmpty)
                   Row(
@@ -80,11 +94,11 @@ class TopBar extends ConsumerWidget {
                         ),
                       ),
                       if (wordLength != null) ...[
-                        const SizedBox(width: 8),
+                        const SizedBox(width: 4),
                         Text(
                           '$wordLength',
                           style: const TextStyle(
-                            fontSize: 14,
+                            fontSize: 12,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
@@ -94,10 +108,7 @@ class TopBar extends ConsumerWidget {
               ],
             ),
           ),
-          Text(
-            'Round ${gameStateModel.round}/${gameStateModel.maxRounds}',
-            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-          ),
+          const SizedBox(width: 64),
         ],
       ),
     );

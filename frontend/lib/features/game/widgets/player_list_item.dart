@@ -1,9 +1,11 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:frontend/features/game/providers/game_provider.dart';
 import 'package:frontend/features/game/models/player.dart';
+import 'package:frontend/features/shared/widgets/avatar_display.dart';
 
-class PlayerListItem extends StatefulWidget {
+class PlayerListItem extends ConsumerStatefulWidget {
   final Player player;
   final int rank;
   final bool isEven;
@@ -20,10 +22,10 @@ class PlayerListItem extends StatefulWidget {
   });
 
   @override
-  State<PlayerListItem> createState() => PlayerListItemState();
+  ConsumerState<PlayerListItem> createState() => PlayerListItemState();
 }
 
-class PlayerListItemState extends State<PlayerListItem> {
+class PlayerListItemState extends ConsumerState<PlayerListItem> {
   Timer? _bubbleTimer;
   OverlayEntry? _overlayEntry;
   final LayerLink _layerLink = LayerLink();
@@ -35,7 +37,6 @@ class PlayerListItemState extends State<PlayerListItem> {
         oldWidget.gameState.chatMessages.length) {
       final latestMsg = widget.gameState.chatMessages.last;
 
-      // Hide bubbles for the user themselves
       if (latestMsg['sender'] == widget.gameState.nickname) return;
 
       if (latestMsg['sender'] == widget.player.nickname) {
@@ -70,18 +71,11 @@ class PlayerListItemState extends State<PlayerListItem> {
   void _showTextBubble(String msg) {
     _hideBubble();
     _overlayEntry = _createOverlayEntry(
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(Icons.chat_bubble_outline, size: 14, color: Colors.grey),
-          const SizedBox(width: 4),
-          Flexible(
-            child: Text(
-              msg,
-              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
-            ),
-          ),
-        ],
+      child: Flexible(
+        child: Text(
+          msg,
+          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+        ),
       ),
     );
     Overlay.of(context).insert(_overlayEntry!);
@@ -90,10 +84,10 @@ class PlayerListItemState extends State<PlayerListItem> {
   void _showVoteBubble(bool isLike) {
     _hideBubble();
     _overlayEntry = _createOverlayEntry(
-      child: Icon(
-        isLike ? Icons.thumb_up : Icons.thumb_down,
-        color: isLike ? Colors.green : Colors.red,
-        size: 24,
+      child: Image.asset(
+        isLike ? 'assets/images/thumbsup.gif' : 'assets/images/thumbsdown.gif',
+        width: 24,
+        height: 24,
       ),
     );
     Overlay.of(context).insert(_overlayEntry!);
@@ -107,7 +101,7 @@ class PlayerListItemState extends State<PlayerListItem> {
           child: CompositedTransformFollower(
             link: _layerLink,
             showWhenUnlinked: false,
-            offset: Offset(widget.listWidth - 10, 15),
+            offset: Offset(widget.listWidth, 5),
             child: Align(
               alignment: Alignment.topLeft,
               child: Material(
@@ -139,6 +133,60 @@ class PlayerListItemState extends State<PlayerListItem> {
     _overlayEntry = null;
   }
 
+  void _showKickDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        backgroundColor: const Color.fromARGB(255, 12, 44, 150),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(0)),
+        child: Container(
+          padding: const EdgeInsets.all(20),
+          width: 350,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              AvatarDisplay(
+                colorIndex: widget.player.avatar.color,
+                eyesIndex: widget.player.avatar.eyes,
+                mouthIndex: widget.player.avatar.mouth,
+                scale: 1.0,
+              ),
+              const SizedBox(height: 4),
+              Text(
+                widget.player.nickname,
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 18,
+                  color: Colors.white,
+                ),
+              ),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                    ref
+                        .read(gameProvider.notifier)
+                        .sendKickVote(widget.player.id);
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF1E2CB3),
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  child: const Text('Vote Kick'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   void dispose() {
     _hideBubble();
@@ -150,54 +198,66 @@ class PlayerListItemState extends State<PlayerListItem> {
   Widget build(BuildContext context) {
     return CompositedTransformTarget(
       link: _layerLink,
-      child: Container(
-        height: 60,
-        decoration: BoxDecoration(
-          color: widget.player.guessedWord
-              ? Colors.green.shade100
-              : (widget.isEven ? Colors.white : Colors.grey.shade200),
-        ),
-        child: Row(
-          children: [
-            const SizedBox(width: 12),
-            Text(
-              '#${widget.rank}',
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    widget.player.nickname == widget.gameState.nickname
-                        ? '${widget.player.nickname} (You)'
-                        : widget.player.nickname,
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: widget.player.nickname == widget.gameState.nickname
-                          ? Colors.blue
-                          : Colors.black,
-                    ),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  Text(
-                    '${widget.player.score} points',
-                    style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
-                  ),
-                ],
+      child: InkWell(
+        onTap: widget.player.nickname == widget.gameState.nickname
+            ? null
+            : _showKickDialog,
+        child: Container(
+          height: 48,
+          decoration: BoxDecoration(
+            color: widget.player.guessedWord
+                ? (widget.isEven
+                      ? Colors.green.shade400
+                      : Colors.green.shade300)
+                : (widget.isEven ? Colors.white : Colors.grey.shade200),
+          ),
+          child: Row(
+            children: [
+              const SizedBox(width: 12),
+              Text(
+                '#${widget.rank}',
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                ),
               ),
-            ),
-            if (widget.player.isDrawer)
-              const Icon(Icons.brush, size: 20, color: Colors.amber),
-            const SizedBox(width: 8),
-            const CircleAvatar(
-              backgroundColor: Colors.blueAccent,
-              child: Icon(Icons.person, color: Colors.white),
-            ),
-            const SizedBox(width: 8),
-          ],
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      widget.player.nickname == widget.gameState.nickname
+                          ? '${widget.player.nickname} (You)'
+                          : widget.player.nickname,
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    Text(
+                      '${widget.player.score} points',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey.shade700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (widget.player.isDrawer)
+                Image.asset("assets/images/pen.gif", width: 30, height: 30),
+              const SizedBox(width: 8),
+              AvatarDisplay(
+                colorIndex: widget.player.avatar.color,
+                eyesIndex: widget.player.avatar.eyes,
+                mouthIndex: widget.player.avatar.mouth,
+                scale: 1,
+              ),
+            ],
+          ),
         ),
       ),
     );

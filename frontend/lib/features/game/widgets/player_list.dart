@@ -14,9 +14,11 @@ class PlayerList extends ConsumerWidget {
     final gameState = ref.watch(gameProvider);
     final players = gameState.players;
 
-    final sortedByScore = List.from(players)
-      ..sort((a, b) => ((b as Player).score).compareTo(a.score));
     final rankMap = <String, int>{};
+    // Backend already sends players sorted by JoinedAt.
+    // We still calculate ranks based on scores for visual feedback.
+    final sortedByScore = List<Player>.from(players)..sort((a, b) => b.score.compareTo(a.score));
+
     int currentRank = 1;
     for (int i = 0; i < sortedByScore.length; i++) {
       if (i > 0 && sortedByScore[i].score < sortedByScore[i - 1].score) {
@@ -27,11 +29,7 @@ class PlayerList extends ConsumerWidget {
 
     return Container(
       width: width,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade300),
-      ),
+      margin: EdgeInsets.only(bottom: 52),
       child: ListView.builder(
         clipBehavior: Clip.none,
         itemCount: players.length,

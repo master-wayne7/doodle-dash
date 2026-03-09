@@ -9,10 +9,11 @@ final appRouter = GoRouter(
     GoRoute(
       path: '/game',
       builder: (context, state) {
-        final extra = state.extra as Map<String, String>?;
-        final nickname = extra?['nickname'] ?? 'Player';
-        final roomId = extra?['roomId'] ?? '';
-        return GameScreen(nickname: nickname, roomId: roomId);
+        final extra = state.extra as Map<String, dynamic>?;
+        final nickname = extra?['nickname'] as String? ?? 'Player';
+        final roomId = extra?['roomId'] as String? ?? '';
+        final avatar = extra?['avatar'] as Map<String, dynamic>?;
+        return GameScreen(nickname: nickname, roomId: roomId, avatar: avatar);
       },
     ),
   ],

@@ -30,19 +30,38 @@ class _DrawingBoardState extends ConsumerState<DrawingBoard> {
   DrawnPath? _currentPath;
   Color _selectedColor = Colors.black;
   double _strokeWidth = 5.0;
+  String _activeTool = 'pen'; // 'pen' or 'fill'
   StreamSubscription? _sub;
+  final LayerLink _brushSizeLink = LayerLink();
+  OverlayEntry? _brushSizeOverlay;
 
-  final List<Color> _colors = [
-    Colors.black,
-    Colors.white,
-    Colors.red,
-    Colors.green,
-    Colors.blue,
-    Colors.yellow,
-    Colors.orange,
-    Colors.purple,
-    Colors.brown,
-    Colors.pink,
+  static const List<Color> _palette = [
+    Color.fromARGB(255, 255, 255, 255),
+    Color.fromARGB(255, 0, 0, 0),
+    Color.fromARGB(255, 193, 193, 193),
+    Color.fromARGB(255, 80, 80, 80),
+    Color.fromARGB(255, 239, 19, 11),
+    Color.fromARGB(255, 116, 11, 7),
+    Color.fromARGB(255, 255, 113, 0),
+    Color.fromARGB(255, 194, 56, 0),
+    Color.fromARGB(255, 255, 228, 0),
+    Color.fromARGB(255, 232, 162, 0),
+    Color.fromARGB(255, 0, 204, 0),
+    Color.fromARGB(255, 0, 70, 25),
+    Color.fromARGB(255, 0, 255, 145),
+    Color.fromARGB(255, 0, 120, 93),
+    Color.fromARGB(255, 0, 178, 255),
+    Color.fromARGB(255, 0, 86, 158),
+    Color.fromARGB(255, 35, 31, 211),
+    Color.fromARGB(255, 14, 8, 101),
+    Color.fromARGB(255, 163, 0, 186),
+    Color.fromARGB(255, 85, 0, 105),
+    Color.fromARGB(255, 223, 105, 167),
+    Color.fromARGB(255, 135, 53, 84),
+    Color.fromARGB(255, 255, 172, 142),
+    Color.fromARGB(255, 204, 119, 77),
+    Color.fromARGB(255, 160, 82, 45),
+    Color.fromARGB(255, 99, 48, 13),
   ];
 
   @override
@@ -53,7 +72,9 @@ class _DrawingBoardState extends ConsumerState<DrawingBoard> {
       final wsService = ref.read(webSocketServiceProvider);
       _sub = wsService.messageStream.listen((data) {
         if (data['type'] == 'draw') {
-          if (!widget.isDrawer || data['action'] == 'clear') {
+          // If we are the drawer, we handle drawing locally to avoid lag/echo duplication,
+          // so we ignore echoed draw messages.
+          if (!widget.isDrawer) {
             _handleDrawAction(data);
           }
         }
@@ -101,6 +122,7 @@ class _DrawingBoardState extends ConsumerState<DrawingBoard> {
   @override
   void dispose() {
     _sub?.cancel();
+    _hideBrushSizeOverlay();
     super.dispose();
   }
 
@@ -158,6 +180,114 @@ class _DrawingBoardState extends ConsumerState<DrawingBoard> {
     setState(() {});
   }
 
+  void _undoAction() {
+    if (!widget.isDrawer || _paths.isEmpty) return;
+    // Basic local undo without full server history sync out of scope for now,
+    // but we can pop local and send a clear + full redraw sequence if we want to be robust.
+    // For simplicity, just pop local array.
+    _paths.removeLast();
+    ref.read(gameProvider.notifier).sendDrawAction({'action': 'clear'});
+    for (var path in _paths) {
+      ref.read(gameProvider.notifier).sendDrawAction({
+        'action': 'start',
+        'dx': path.points.first.dx,
+        'dy': path.points.first.dy,
+        'color': path.color.value,
+        'strokeWidth': path.strokeWidth,
+      });
+      for (int i = 1; i < path.points.length; i++) {
+        ref.read(gameProvider.notifier).sendDrawAction({
+          'action': 'update',
+          'dx': path.points[i].dx,
+          'dy': path.points[i].dy,
+        });
+      }
+      ref.read(gameProvider.notifier).sendDrawAction({'action': 'end'});
+    }
+    setState(() {});
+  }
+
+  void _toggleBrushSizeOverlay() {
+    if (_brushSizeOverlay != null) {
+      _hideBrushSizeOverlay();
+    } else {
+      _showBrushSizeOverlay();
+    }
+  }
+
+  void _hideBrushSizeOverlay() {
+    _brushSizeOverlay?.remove();
+    _brushSizeOverlay = null;
+  }
+
+  void _showBrushSizeOverlay() {
+    final sizes = [4.0, 10.0, 20.0, 32.0];
+    _brushSizeOverlay = OverlayEntry(
+      builder: (context) {
+        return GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: _hideBrushSizeOverlay,
+          child: Stack(
+            children: [
+              Positioned.fill(child: Container(color: Colors.transparent)),
+              CompositedTransformFollower(
+                link: _brushSizeLink,
+                showWhenUnlinked: false,
+                offset: const Offset(0, -150), // Pop upwards
+                child: Material(
+                  elevation: 4,
+                  borderRadius: BorderRadius.circular(4),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    width: 48,
+                    height: 150,
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: sizes
+                          .map((s) {
+                            return GestureDetector(
+                              onTap: () {
+                                setState(() => _strokeWidth = s);
+                                _hideBrushSizeOverlay();
+                              },
+                              child: Container(
+                                width: 32,
+                                height: 32,
+                                color: _strokeWidth == s
+                                    ? Colors.grey.shade200
+                                    : Colors.transparent,
+                                child: Center(
+                                  child: Container(
+                                    width: s,
+                                    height: s,
+                                    decoration: const BoxDecoration(
+                                      color: Colors.black,
+                                      shape: BoxShape.circle,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            );
+                          })
+                          .toList()
+                          .reversed
+                          .toList(), // Largest at top
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+    Overlay.of(context).insert(_brushSizeOverlay!);
+  }
+
   @override
   Widget build(BuildContext context) {
     final gameState = ref.watch(gameProvider);
@@ -165,14 +295,11 @@ class _DrawingBoardState extends ConsumerState<DrawingBoard> {
       children: [
         Expanded(
           child: Container(
-            margin: const EdgeInsets.all(8.0),
             decoration: BoxDecoration(
               color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
               border: Border.all(color: Colors.grey.shade300),
             ),
             child: ClipRRect(
-              borderRadius: BorderRadius.circular(12),
               child: LayoutBuilder(
                 builder: (context, constraints) {
                   return Stack(
@@ -206,16 +333,15 @@ class _DrawingBoardState extends ConsumerState<DrawingBoard> {
                           child: Row(
                             children: [
                               _VoteButton(
-                                icon: Icons.thumb_up_alt_outlined,
-                                color: Colors.green,
+                                image: 'assets/images/thumbsup.gif',
+
                                 onTap: () => ref
                                     .read(gameProvider.notifier)
                                     .vote('like'),
                               ),
                               const SizedBox(width: 8),
                               _VoteButton(
-                                icon: Icons.thumb_down_alt_outlined,
-                                color: Colors.red,
+                                image: 'assets/images/thumbsdown.gif',
                                 onTap: () => ref
                                     .read(gameProvider.notifier)
                                     .vote('dislike'),
@@ -233,57 +359,139 @@ class _DrawingBoardState extends ConsumerState<DrawingBoard> {
         if (widget.isDrawer)
           _buildToolbar()
         else
-          const SizedBox(
-            height: 52,
-          ), // Placeholder to maintain same canvas size (Toolbar height ~52)
+          Container(height: 52, color: Colors.transparent),
       ],
     );
   }
 
   Widget _buildToolbar() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+      height: 52,
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          IconButton(icon: const Icon(Icons.delete), onPressed: _clearBoard),
-          Slider(
-            value: _strokeWidth,
-            min: 2,
-            max: 20,
-            onChanged: (v) => setState(() => _strokeWidth = v),
+          // Left: Current Color Indicator
+          Container(
+            width: 36,
+            decoration: BoxDecoration(
+              color: _selectedColor,
+              border: Border.all(color: Colors.black, width: 2),
+            ),
           ),
+          const SizedBox(width: 8),
+
+          // Center: Color Grid
           Expanded(
             child: SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: Row(
-                children: _colors.map((c) {
-                  return GestureDetector(
-                    onTap: () => setState(() => _selectedColor = c),
-                    child: Container(
-                      margin: const EdgeInsets.symmetric(horizontal: 4),
-                      width: 24,
-                      height: 24,
-                      decoration: BoxDecoration(
-                        color: c,
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: _selectedColor == c
-                              ? Colors.black
-                              : Colors.grey.shade300,
-                          width: 2,
-                        ),
-                      ),
-                    ),
+                children: List.generate(13, (colIndex) {
+                  final topColorIdx = colIndex * 2;
+                  final bottomColorIdx = topColorIdx + 1;
+                  return Column(
+                    children: [
+                      _buildColorBox(_palette[topColorIdx]),
+                      _buildColorBox(_palette[bottomColorIdx]),
+                    ],
                   );
-                }).toList(),
+                }),
               ),
             ),
           ),
+
+          const SizedBox(width: 8),
+
+          // Right Tools
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Brush Size
+              CompositedTransformTarget(
+                link: _brushSizeLink,
+                child: GestureDetector(
+                  onTap: _toggleBrushSizeOverlay,
+                  child: Container(
+                    width: 36,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      border: Border.all(color: Colors.grey.shade400),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Center(
+                      child: Container(
+                        width: _strokeWidth,
+                        height: _strokeWidth,
+                        decoration: const BoxDecoration(
+                          color: Colors.black,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 16),
+
+              // Tool Icons
+              _buildToolIcon(
+                'assets/images/pen.gif',
+                'pen',
+                onTap: () => setState(() => _activeTool = 'pen'),
+              ),
+              const SizedBox(width: 16),
+
+              // Action Icons
+              _buildToolIcon(
+                'assets/images/undo.gif',
+                '',
+                onTap: _undoAction,
+                isButton: true,
+              ),
+              const SizedBox(width: 4),
+              _buildToolIcon(
+                'assets/images/clear.gif',
+                '',
+                onTap: _clearBoard,
+                isButton: true,
+              ),
+            ],
+          ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildColorBox(Color color) {
+    return GestureDetector(
+      onTap: () => setState(() => _selectedColor = color),
+      child: Container(
+        width: 18,
+        height: 18,
+        decoration: BoxDecoration(color: color),
+      ),
+    );
+  }
+
+  Widget _buildToolIcon(
+    String imagePath,
+    String toolId, {
+    required VoidCallback onTap,
+    bool isButton = false,
+  }) {
+    final isActive = !isButton && _activeTool == toolId;
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 36,
+        decoration: BoxDecoration(
+          color: isActive ? Colors.purple.shade200 : Colors.white,
+          border: isActive
+              ? Border.all(color: Colors.purple.shade700, width: 2)
+              : Border.all(color: Colors.grey.shade400),
+          borderRadius: BorderRadius.circular(4),
+        ),
+        child: Center(child: Image.asset(imagePath, width: 30, height: 30)),
       ),
     );
   }
@@ -333,35 +541,16 @@ class DrawingPainter extends CustomPainter {
 }
 
 class _VoteButton extends StatelessWidget {
-  final IconData icon;
-  final Color color;
+  final String image;
   final VoidCallback onTap;
 
-  const _VoteButton({
-    required this.icon,
-    required this.color,
-    required this.onTap,
-  });
+  const _VoteButton({required this.image, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(8),
-        decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.8),
-          shape: BoxShape.circle,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.1),
-              blurRadius: 4,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Icon(icon, color: color, size: 28),
-      ),
+      child: Image.asset(image, width: 40, height: 40),
     );
   }
 }

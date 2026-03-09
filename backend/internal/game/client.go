@@ -24,6 +24,12 @@ var Upgrader = websocket.Upgrader{
 	CheckOrigin: func(r *http.Request) bool { return true },
 }
 
+type Avatar struct {
+	Color int `json:"color"`
+	Eyes  int `json:"eyes"`
+	Mouth int `json:"mouth"`
+}
+
 type Client struct {
 	Hub         *Hub
 	Room        *Room
@@ -37,6 +43,7 @@ type Client struct {
 	GuessedWord bool
 	JoinedAt    time.Time
 	Voted       bool
+	Avatar      Avatar
 }
 
 // ReadPump pumps messages from the websocket connection to the room.

@@ -76,8 +76,15 @@ func (r *Room) getHintLocked(isDrawer bool) string {
 	tl := r.TimeLeft
 	r.tickerMutex.Unlock()
 
-	timeElapsed := 60 - tl
-	numRevealed := timeElapsed / 20
+	// Reveal 1st hint at 20s (tl=40), 2nd hint at 40s (tl=20)
+	numRevealed := 0
+	if tl <= 40 {
+		numRevealed = 1
+	}
+	if tl <= 20 {
+		numRevealed = 2
+	}
+
 	if numRevealed > len(r.HintIndices) {
 		numRevealed = len(r.HintIndices)
 	}

@@ -18,6 +18,8 @@ func (r *Room) ProcessMessage(c *Client, msg map[string]interface{}) {
 		r.handleWordSelection(c, msg)
 	case "vote":
 		r.handleVote(c, msg)
+	case "vote_kick":
+		r.handleVoteKick(c, msg)
 	}
 }
 
@@ -127,5 +129,58 @@ func (r *Room) handleVote(c *Client, msg map[string]interface{}) {
 		})
 		r.broadcastMessage(b)
 		r.broadcastPlayerList()
+	}
+}
+
+func (r *Room) handleVoteKick(c *Client, msg map[string]interface{}) {
+	targetID, _ := msg["target"].(string)
+	if targetID == c.ID {
+		return // Can't kick yourself
+	}
+
+	r.mu.Lock()
+	if r.VoteKicks[targetID] == nil {
+		r.VoteKicks[targetID] = make(map[string]bool)
+	}
+	r.VoteKicks[targetID][c.ID] = true
+
+	votes := len(r.VoteKicks[targetID])
+	playerCount := len(r.Clients)
+
+	var targetClient *Client
+	for client := range r.Clients {
+		if client.ID == targetID {
+			targetClient = client
+			break
+		}
+	}
+	r.mu.Unlock()
+
+	if targetClient == nil {
+		return
+	}
+
+	threshold := 1
+	if playerCount <= 3 {
+		threshold = 1
+	} else if playerCount == 4 {
+		threshold = 2
+	} else if playerCount >= 5 {
+		threshold = 3
+	} else if playerCount == 6 {
+		threshold = 4
+	} else if playerCount >= 7 {
+		threshold = 5
+	}
+
+	r.broadcastSystemMessage(fmt.Sprintf("%s has voted to kick %s [%d/%d]", c.Nickname, targetClient.Nickname, votes, threshold))
+
+	if votes >= threshold {
+		kickedMsg, _ := json.Marshal(map[string]interface{}{"type": "kicked"})
+		select {
+		case targetClient.Send <- kickedMsg:
+		default:
+		}
+		r.Leave <- targetClient
 	}
 }

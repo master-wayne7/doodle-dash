@@ -86,7 +86,21 @@ func (r *Room) handleTimeout() {
 	case StateTurnEnd:
 		r.startNextTurn()
 	case StateGameOver:
-		r.changeState(StateLobby)
+		r.mu.Lock()
+		r.RoundNumber = 0
+		for c := range r.Clients {
+			c.Score = 0
+		}
+		numPlayers := len(r.Clients)
+		r.broadcastPlayerListLocked()
+		r.broadcastGameStateLocked()
+		r.mu.Unlock()
+
+		if numPlayers >= 2 {
+			r.changeState(StateStarting)
+		} else {
+			r.changeState(StateLobby)
+		}
 	}
 }
 
