@@ -97,7 +97,8 @@ class GameNotifier extends Notifier<GameStateModel> {
     final wsService = ref.read(webSocketServiceProvider);
 
     _sub = wsService.messageStream.listen(_handleMessage);
-    wsService.connect('ws://localhost:8080/ws');
+    final backendUrl = const String.fromEnvironment('BACKEND_URL', defaultValue: 'ws://localhost:8080/ws');
+    ref.read(webSocketServiceProvider).connect(backendUrl);
 
     Future.delayed(const Duration(milliseconds: 500), () {
       wsService.sendMessage({

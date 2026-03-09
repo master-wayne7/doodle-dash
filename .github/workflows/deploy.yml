@@ -1,0 +1,35 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches:
+      - main # Or your default branch name
+
+jobs:
+  build_and_deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: "stable"
+          flutter-version: "latest"
+
+      - name: Install dependencies
+        working-directory: ./frontend
+        run: flutter pub get
+
+      - name: Build Web App
+        working-directory: ./frontend
+        # This injects the backend URL into the flutter build
+        run: flutter build web --base-href /doodle-dash/ --dart-define=BACKEND_URL="${{ secrets.BACKEND_URL }}"
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.TOKEN }}
+          publish_dir: ./frontend/build/web
