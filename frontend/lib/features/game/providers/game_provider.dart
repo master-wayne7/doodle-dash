@@ -97,7 +97,15 @@ class GameNotifier extends Notifier<GameStateModel> {
     final wsService = ref.read(webSocketServiceProvider);
 
     _sub = wsService.messageStream.listen(_handleMessage);
-    final backendUrl = const String.fromEnvironment('BACKEND_URL', defaultValue: 'ws://localhost:8080/ws');
+    String backendUrl = const String.fromEnvironment('BACKEND_URL', defaultValue: 'ws://localhost:8080/ws');
+    if (backendUrl.startsWith('http://')) {
+      backendUrl = backendUrl.replaceFirst('http://', 'ws://');
+    } else if (backendUrl.startsWith('https://')) {
+      backendUrl = backendUrl.replaceFirst('https://', 'wss://');
+    }
+    if (!backendUrl.endsWith('/ws')) {
+      backendUrl = backendUrl.endsWith('/') ? '${backendUrl}ws' : '$backendUrl/ws';
+    }
     ref.read(webSocketServiceProvider).connect(backendUrl);
 
     Future.delayed(const Duration(milliseconds: 500), () {
