@@ -4,12 +4,16 @@ import (
 	"encoding/json"
 )
 
+// / broadcastMessage sends a raw byte message to all clients currently in the room.
+// / It acquires the room lock before calling the internal locked version.
 func (r *Room) broadcastMessage(message []byte) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.broadcastMessageLocked(message)
 }
 
+// / broadcastMessageLocked sends a raw byte message to all clients.
+// / The caller must hold the room's mutex (`r.mu`). If a client's channel is full or closed, they are removed.
 func (r *Room) broadcastMessageLocked(message []byte) {
 	for client := range r.Clients {
 		select {
@@ -21,12 +25,14 @@ func (r *Room) broadcastMessageLocked(message []byte) {
 	}
 }
 
+// / broadcastSystemMessage sends a structured system-level chat message to all clients.
 func (r *Room) broadcastSystemMessage(msg string) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.broadcastSystemMessageLocked(msg)
 }
 
+// / broadcastSystemMessageLocked sends a structured system message without acquiring the lock.
 func (r *Room) broadcastSystemMessageLocked(msg string) {
 	b, _ := json.Marshal(map[string]interface{}{
 		"type":    "system",
@@ -35,12 +41,15 @@ func (r *Room) broadcastSystemMessageLocked(msg string) {
 	r.broadcastMessageLocked(b)
 }
 
+// / broadcastGameState sends the current full game state to all players.
 func (r *Room) broadcastGameState() {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.broadcastGameStateLocked()
 }
 
+// / broadcastGameStateLocked sends the current game state to all players.
+// / It obfuscates the word for non-drawers during the drawing phase.
 func (r *Room) broadcastGameStateLocked() {
 	var drawerNickname string
 	if r.Drawer != nil {
@@ -55,8 +64,10 @@ func (r *Room) broadcastGameStateLocked() {
 	for client := range r.Clients {
 		isDrawer := (r.Drawer != nil && client == r.Drawer)
 		clientWord := word
-		if isDrawer && r.State == StateDrawing {
-			clientWord = r.CurrentWord
+		if r.State == StateDrawing {
+			if isDrawer || client.GuessedWord {
+				clientWord = r.CurrentWord
+			}
 		}
 
 		b, _ := json.Marshal(map[string]interface{}{
@@ -78,12 +89,14 @@ func (r *Room) broadcastGameStateLocked() {
 	}
 }
 
+// / sendGameStateTo sends the current game state to a specific client.
 func (r *Room) sendGameStateTo(c *Client) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.sendGameStateToLocked(c)
 }
 
+// / sendGameStateToLocked sends the current state to a specific client without acquiring the lock.
 func (r *Room) sendGameStateToLocked(c *Client) {
 	var drawerNickname string
 	if r.Drawer != nil {
@@ -95,8 +108,10 @@ func (r *Room) sendGameStateToLocked(c *Client) {
 	word := ""
 	if r.State == StateTurnEnd || r.State == StateGameOver {
 		word = r.CurrentWord
-	} else if isDrawer && r.State == StateDrawing {
-		word = r.CurrentWord
+	} else if r.State == StateDrawing {
+		if isDrawer || c.GuessedWord {
+			word = r.CurrentWord
+		}
 	}
 
 	b, _ := json.Marshal(map[string]interface{}{
@@ -115,6 +130,7 @@ func (r *Room) sendGameStateToLocked(c *Client) {
 	}
 }
 
+// / broadcastTimerLocked sends the remaining time and the current hint to all clients.
 func (r *Room) broadcastTimerLocked() {
 	b, _ := json.Marshal(map[string]interface{}{
 		"type":      "timer",

@@ -2,6 +2,7 @@ package game
 
 import "time"
 
+// / startNextRound increments the round counter and either begins the round or ends the game if max rounds are reached.
 func (r *Room) startNextRound() {
 	r.RoundNumber++
 	if r.RoundNumber > r.MaxRounds {
@@ -19,6 +20,7 @@ func (r *Room) startNextRound() {
 	r.changeState(StateRound)
 }
 
+// / startNextTurn selects the next drawer from the queue and resets turn-specific variables.
 func (r *Room) startNextTurn() {
 	r.mu.Lock()
 	if len(r.TurnQueue) == 0 {
@@ -42,6 +44,7 @@ func (r *Room) startNextTurn() {
 	r.changeState(StateChoosing)
 }
 
+// / endTurn transitions the game from drawing phase to the turn end phase.
 func (r *Room) endTurn() {
 	if r.State != StateDrawing {
 		return
@@ -49,6 +52,7 @@ func (r *Room) endTurn() {
 	r.changeState(StateTurnEnd)
 }
 
+// / selectWord sets the chosen word for the current turn and transitions to the drawing state.
 func (r *Room) selectWord(word string) {
 	if r.State != StateChoosing {
 		return
@@ -58,12 +62,14 @@ func (r *Room) selectWord(word string) {
 	r.changeState(StateDrawing)
 }
 
+// / setTimeLeft updates the remaining time for the current state in a thread-safe manner.
 func (r *Room) setTimeLeft(t int) {
 	r.tickerMutex.Lock()
 	r.TimeLeft = t
 	r.tickerMutex.Unlock()
 }
 
+// / handleTimeout handles automatic state transitions when the timer for the current state runs out.
 func (r *Room) handleTimeout() {
 	r.mu.Lock()
 	state := r.State
@@ -104,6 +110,7 @@ func (r *Room) handleTimeout() {
 	}
 }
 
+// / runTimer continuously ticks down the time left for the current state, broadcasting updates to clients.
 func (r *Room) runTimer() {
 	ticker := time.NewTicker(1 * time.Second)
 	defer ticker.Stop()

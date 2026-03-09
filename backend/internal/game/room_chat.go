@@ -6,6 +6,7 @@ import (
 	"strings"
 )
 
+// / ProcessMessage routes incoming client messages to the appropriate handler based on the message type.
 func (r *Room) ProcessMessage(c *Client, msg map[string]interface{}) {
 	msgType, _ := msg["type"].(string)
 
@@ -23,6 +24,7 @@ func (r *Room) ProcessMessage(c *Client, msg map[string]interface{}) {
 	}
 }
 
+// / handleChat processes chat messages, checks for correct word guesses, and broadcasts the chat to others.
 func (r *Room) handleChat(c *Client, msg map[string]interface{}) {
 	content, _ := msg["content"].(string)
 
@@ -68,6 +70,7 @@ func (r *Room) handleChat(c *Client, msg map[string]interface{}) {
 	}
 }
 
+// / markGuessed updates a client's state after correctly guessing the word, awards points, and checks if the turn should end.
 func (r *Room) markGuessed(c *Client) {
 	c.GuessedWord = true
 	points := (r.TimeLeft * 10) + (len(r.Clients) * 5)
@@ -97,6 +100,7 @@ func (r *Room) markGuessed(c *Client) {
 	}
 }
 
+// / handleDraw processes drawing events from the current drawer and broadcasts them to all other clients.
 func (r *Room) handleDraw(c *Client, msg map[string]interface{}) {
 	if r.State == StateDrawing && c == r.Drawer {
 		r.mu.Lock()
@@ -107,6 +111,7 @@ func (r *Room) handleDraw(c *Client, msg map[string]interface{}) {
 	}
 }
 
+// / handleWordSelection processes the drawer's choice of word from the provided options.
 func (r *Room) handleWordSelection(c *Client, msg map[string]interface{}) {
 	if r.State == StateChoosing && c == r.Drawer {
 		word, _ := msg["word"].(string)
@@ -119,6 +124,7 @@ func (r *Room) handleWordSelection(c *Client, msg map[string]interface{}) {
 	}
 }
 
+// / handleVote processes positive or negative votes on the current drawing and broadcasts the updated status.
 func (r *Room) handleVote(c *Client, msg map[string]interface{}) {
 	if r.State == StateDrawing && !c.IsDrawer && !c.Voted {
 		voteType, _ := msg["vote"].(string)
@@ -132,6 +138,7 @@ func (r *Room) handleVote(c *Client, msg map[string]interface{}) {
 	}
 }
 
+// / handleVoteKick processes a player's vote to kick another player. If the threshold is reached, the target is removed.
 func (r *Room) handleVoteKick(c *Client, msg map[string]interface{}) {
 	targetID, _ := msg["target"].(string)
 	if targetID == c.ID {

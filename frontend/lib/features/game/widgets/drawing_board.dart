@@ -5,18 +5,16 @@ import 'package:frontend/core/websocket/websocket_service.dart';
 import 'package:frontend/features/game/providers/game_provider.dart';
 import 'package:frontend/features/game/models/game_state.dart';
 
+/// Represents a single continuous stroke drawn on the canvas.
 class DrawnPath {
   final List<Offset> points;
   final Color color;
   final double strokeWidth;
 
-  DrawnPath({
-    required this.points,
-    required this.color,
-    required this.strokeWidth,
-  });
+  DrawnPath({required this.points, required this.color, required this.strokeWidth});
 }
 
+/// The interactive canvas area where the current drawer sketches and others view the drawing in real-time.
 class DrawingBoard extends ConsumerStatefulWidget {
   final bool isDrawer;
   const DrawingBoard({super.key, required this.isDrawer});
@@ -85,12 +83,7 @@ class _DrawingBoardState extends ConsumerState<DrawingBoard> {
   void _handleDrawAction(Map<String, dynamic> data) {
     if (data['action'] == 'start') {
       _currentPath = DrawnPath(
-        points: [
-          Offset(
-            (data['dx'] as num).toDouble(),
-            (data['dy'] as num).toDouble(),
-          ),
-        ],
+        points: [Offset((data['dx'] as num).toDouble(), (data['dy'] as num).toDouble())],
         color: Color(data['color']),
         strokeWidth: (data['strokeWidth'] as num).toDouble(),
       );
@@ -98,9 +91,7 @@ class _DrawingBoardState extends ConsumerState<DrawingBoard> {
         setState(() {});
       }
     } else if (data['action'] == 'update' && _currentPath != null) {
-      _currentPath!.points.add(
-        Offset((data['dx'] as num).toDouble(), (data['dy'] as num).toDouble()),
-      );
+      _currentPath!.points.add(Offset((data['dx'] as num).toDouble(), (data['dy'] as num).toDouble()));
       if (mounted) {
         setState(() {});
       }
@@ -131,11 +122,7 @@ class _DrawingBoardState extends ConsumerState<DrawingBoard> {
     final x = details.localPosition.dx / constraints.maxWidth;
     final y = details.localPosition.dy / constraints.maxHeight;
 
-    _currentPath = DrawnPath(
-      points: [Offset(x, y)],
-      color: _selectedColor,
-      strokeWidth: _strokeWidth,
-    );
+    _currentPath = DrawnPath(points: [Offset(x, y)], color: _selectedColor, strokeWidth: _strokeWidth);
     ref.read(gameProvider.notifier).sendDrawAction({
       'action': 'start',
       'dx': x,
@@ -154,11 +141,7 @@ class _DrawingBoardState extends ConsumerState<DrawingBoard> {
     final y = details.localPosition.dy / constraints.maxHeight;
 
     _currentPath!.points.add(Offset(x, y));
-    ref.read(gameProvider.notifier).sendDrawAction({
-      'action': 'update',
-      'dx': x,
-      'dy': y,
-    });
+    ref.read(gameProvider.notifier).sendDrawAction({'action': 'update', 'dx': x, 'dy': y});
     setState(() {});
   }
 
@@ -239,10 +222,7 @@ class _DrawingBoardState extends ConsumerState<DrawingBoard> {
                   borderRadius: BorderRadius.circular(4),
                   child: Container(
                     padding: const EdgeInsets.symmetric(vertical: 8),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(4),
-                    ),
+                    decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(4)),
                     width: 48,
                     height: 150,
                     child: Column(
@@ -257,17 +237,12 @@ class _DrawingBoardState extends ConsumerState<DrawingBoard> {
                               child: Container(
                                 width: 32,
                                 height: 32,
-                                color: _strokeWidth == s
-                                    ? Colors.grey.shade200
-                                    : Colors.transparent,
+                                color: _strokeWidth == s ? Colors.grey.shade200 : Colors.transparent,
                                 child: Center(
                                   child: Container(
                                     width: s,
                                     height: s,
-                                    decoration: const BoxDecoration(
-                                      color: Colors.black,
-                                      shape: BoxShape.circle,
-                                    ),
+                                    decoration: const BoxDecoration(color: Colors.black, shape: BoxShape.circle),
                                   ),
                                 ),
                               ),
@@ -290,6 +265,19 @@ class _DrawingBoardState extends ConsumerState<DrawingBoard> {
 
   @override
   Widget build(BuildContext context) {
+    ref.listen(gameProvider, (previous, next) {
+      if (previous?.state == GameState.drawing && next.state != GameState.drawing) {
+        if (mounted) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            setState(() {
+              _paths.clear();
+              _currentPath = null;
+            });
+          });
+        }
+      }
+    });
+
     final gameState = ref.watch(gameProvider);
     return Column(
       children: [
@@ -305,28 +293,17 @@ class _DrawingBoardState extends ConsumerState<DrawingBoard> {
                   return Stack(
                     children: [
                       GestureDetector(
-                        onPanStart: widget.isDrawer
-                            ? (details) => _onPanStart(details, constraints)
-                            : null,
-                        onPanUpdate: widget.isDrawer
-                            ? (details) => _onPanUpdate(details, constraints)
-                            : null,
+                        onPanStart: widget.isDrawer ? (details) => _onPanStart(details, constraints) : null,
+                        onPanUpdate: widget.isDrawer ? (details) => _onPanUpdate(details, constraints) : null,
                         onPanEnd: widget.isDrawer ? _onPanEnd : null,
                         child: CustomPaint(
-                          painter: DrawingPainter(
-                            paths: _paths,
-                            currentPath: _currentPath,
-                          ),
+                          painter: DrawingPainter(paths: _paths, currentPath: _currentPath),
                           size: Size.infinite,
                         ),
                       ),
                       if (!widget.isDrawer &&
                           gameState.state == GameState.drawing &&
-                          !gameState.players
-                              .firstWhere(
-                                (p) => p.nickname == gameState.nickname,
-                              )
-                              .voted)
+                          !gameState.players.firstWhere((p) => p.nickname == gameState.nickname).voted)
                         Positioned(
                           top: 10,
                           right: 10,
@@ -335,16 +312,12 @@ class _DrawingBoardState extends ConsumerState<DrawingBoard> {
                               _VoteButton(
                                 image: 'assets/images/thumbsup.gif',
 
-                                onTap: () => ref
-                                    .read(gameProvider.notifier)
-                                    .vote('like'),
+                                onTap: () => ref.read(gameProvider.notifier).vote('like'),
                               ),
                               const SizedBox(width: 8),
                               _VoteButton(
                                 image: 'assets/images/thumbsdown.gif',
-                                onTap: () => ref
-                                    .read(gameProvider.notifier)
-                                    .vote('dislike'),
+                                onTap: () => ref.read(gameProvider.notifier).vote('dislike'),
                               ),
                             ],
                           ),
@@ -356,10 +329,7 @@ class _DrawingBoardState extends ConsumerState<DrawingBoard> {
             ),
           ),
         ),
-        if (widget.isDrawer)
-          _buildToolbar()
-        else
-          Container(height: 52, color: Colors.transparent),
+        if (widget.isDrawer) _buildToolbar() else Container(height: 52, color: Colors.transparent),
       ],
     );
   }
@@ -390,10 +360,7 @@ class _DrawingBoardState extends ConsumerState<DrawingBoard> {
                   final topColorIdx = colIndex * 2;
                   final bottomColorIdx = topColorIdx + 1;
                   return Column(
-                    children: [
-                      _buildColorBox(_palette[topColorIdx]),
-                      _buildColorBox(_palette[bottomColorIdx]),
-                    ],
+                    children: [_buildColorBox(_palette[topColorIdx]), _buildColorBox(_palette[bottomColorIdx])],
                   );
                 }),
               ),
@@ -422,10 +389,7 @@ class _DrawingBoardState extends ConsumerState<DrawingBoard> {
                       child: Container(
                         width: _strokeWidth,
                         height: _strokeWidth,
-                        decoration: const BoxDecoration(
-                          color: Colors.black,
-                          shape: BoxShape.circle,
-                        ),
+                        decoration: const BoxDecoration(color: Colors.black, shape: BoxShape.circle),
                       ),
                     ),
                   ),
@@ -434,27 +398,13 @@ class _DrawingBoardState extends ConsumerState<DrawingBoard> {
               const SizedBox(width: 16),
 
               // Tool Icons
-              _buildToolIcon(
-                'assets/images/pen.gif',
-                'pen',
-                onTap: () => setState(() => _activeTool = 'pen'),
-              ),
+              _buildToolIcon('assets/images/pen.gif', 'pen', onTap: () => setState(() => _activeTool = 'pen')),
               const SizedBox(width: 16),
 
               // Action Icons
-              _buildToolIcon(
-                'assets/images/undo.gif',
-                '',
-                onTap: _undoAction,
-                isButton: true,
-              ),
+              _buildToolIcon('assets/images/undo.gif', '', onTap: _undoAction, isButton: true),
               const SizedBox(width: 4),
-              _buildToolIcon(
-                'assets/images/clear.gif',
-                '',
-                onTap: _clearBoard,
-                isButton: true,
-              ),
+              _buildToolIcon('assets/images/clear.gif', '', onTap: _clearBoard, isButton: true),
             ],
           ),
         ],
@@ -465,20 +415,11 @@ class _DrawingBoardState extends ConsumerState<DrawingBoard> {
   Widget _buildColorBox(Color color) {
     return GestureDetector(
       onTap: () => setState(() => _selectedColor = color),
-      child: Container(
-        width: 18,
-        height: 18,
-        decoration: BoxDecoration(color: color),
-      ),
+      child: Container(width: 18, height: 18, decoration: BoxDecoration(color: color)),
     );
   }
 
-  Widget _buildToolIcon(
-    String imagePath,
-    String toolId, {
-    required VoidCallback onTap,
-    bool isButton = false,
-  }) {
+  Widget _buildToolIcon(String imagePath, String toolId, {required VoidCallback onTap, bool isButton = false}) {
     final isActive = !isButton && _activeTool == toolId;
     return GestureDetector(
       onTap: onTap,
@@ -497,6 +438,7 @@ class _DrawingBoardState extends ConsumerState<DrawingBoard> {
   }
 }
 
+/// A custom painter that renders all completed paths and the currently active path onto the canvas.
 class DrawingPainter extends CustomPainter {
   final List<DrawnPath> paths;
   final DrawnPath? currentPath;
@@ -505,10 +447,7 @@ class DrawingPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    canvas.drawRect(
-      Rect.fromLTWH(0, 0, size.width, size.height),
-      Paint()..color = Colors.white,
-    );
+    canvas.drawRect(Rect.fromLTWH(0, 0, size.width, size.height), Paint()..color = Colors.white);
     void drawPath(DrawnPath dp) {
       if (dp.points.isEmpty) return;
       final paint = Paint()
@@ -517,13 +456,9 @@ class DrawingPainter extends CustomPainter {
         ..strokeCap = StrokeCap.round
         ..strokeJoin = StrokeJoin.round
         ..style = PaintingStyle.stroke;
-      final path = Path()
-        ..moveTo(dp.points[0].dx * size.width, dp.points[0].dy * size.height);
+      final path = Path()..moveTo(dp.points[0].dx * size.width, dp.points[0].dy * size.height);
       for (int i = 1; i < dp.points.length; i++) {
-        path.lineTo(
-          dp.points[i].dx * size.width,
-          dp.points[i].dy * size.height,
-        );
+        path.lineTo(dp.points[i].dx * size.width, dp.points[i].dy * size.height);
       }
       canvas.drawPath(path, paint);
     }
@@ -548,9 +483,6 @@ class _VoteButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Image.asset(image, width: 40, height: 40),
-    );
+    return GestureDetector(onTap: onTap, child: Image.asset(image, width: 40, height: 40));
   }
 }

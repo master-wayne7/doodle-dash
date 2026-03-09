@@ -11,11 +11,31 @@ final audioServiceProvider = Provider<AudioService>((ref) {
 
 class AudioService {
   final List<AudioPlayer> _pool = [];
+  bool _initialized = false;
+
+  /// Call this when the app starts to preload audio files
+  /// so they play instantly later.
+  Future<void> init() async {
+    if (_initialized) return;
+
+    // Set up a global cache instance for preloading
+    await AudioCache.instance.loadAll([
+      'audio/join.ogg',
+      'audio/leave.ogg',
+      'audio/playerGuessed.ogg',
+      'audio/roundEndFailure.ogg',
+      'audio/roundEndSuccess.ogg',
+      'audio/roundStart.ogg',
+      'audio/tick.ogg',
+    ]);
+
+    _initialized = true;
+  }
 
   AudioPlayer _getPlayer() {
-    final player = AudioPlayer(
-      playerId: DateTime.now().millisecondsSinceEpoch.toString(),
-    );
+    final player = AudioPlayer(playerId: DateTime.now().millisecondsSinceEpoch.toString());
+
+    player.setPlayerMode(PlayerMode.lowLatency);
 
     _pool.add(player);
     return player;
@@ -44,9 +64,7 @@ class AudioService {
   Future<void> startTick() async {
     if (_tickPlayer != null) return;
 
-    _tickPlayer = AudioPlayer(
-      playerId: DateTime.now().millisecondsSinceEpoch.toString(),
-    );
+    _tickPlayer = AudioPlayer(playerId: DateTime.now().millisecondsSinceEpoch.toString());
     await _tickPlayer!.setReleaseMode(ReleaseMode.loop);
     await _tickPlayer!.play(AssetSource('audio/tick.ogg'));
   }

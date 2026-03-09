@@ -6,6 +6,7 @@ import (
 	"sort"
 )
 
+// / addClient registers a new client to the room, sending them initial state and drawing history.
 func (r *Room) addClient(client *Client) {
 	r.mu.Lock()
 	r.Clients[client] = true
@@ -25,6 +26,7 @@ func (r *Room) addClient(client *Client) {
 	r.checkStartGame()
 }
 
+// / removeClient removes a client from the room, cleans up their resources, and checks if the room should be deleted or game stopped.
 func (r *Room) removeClient(client *Client) {
 	r.mu.Lock()
 	if _, ok := r.Clients[client]; ok {
@@ -52,12 +54,14 @@ func (r *Room) removeClient(client *Client) {
 	}
 }
 
+// / broadcastPlayerList sends the updated list of players and their scores to everyone in the room.
 func (r *Room) broadcastPlayerList() {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.broadcastPlayerListLocked()
 }
 
+// / broadcastPlayerListLocked sends the updated player list to all clients, sorted by their join time.
 func (r *Room) broadcastPlayerListLocked() {
 	var clients []*Client
 	for client := range r.Clients {
@@ -89,6 +93,7 @@ func (r *Room) broadcastPlayerListLocked() {
 	r.broadcastMessageLocked(b)
 }
 
+// / checkStartGame transitions the room from Lobby to Starting if there are enough players connected.
 func (r *Room) checkStartGame() {
 	r.mu.Lock()
 	shouldStart := r.State == StateLobby && len(r.Clients) >= 2

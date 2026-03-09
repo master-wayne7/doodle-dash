@@ -5,6 +5,7 @@ import 'package:frontend/core/audio/audio_service.dart';
 import 'package:frontend/features/game/models/game_state.dart';
 import 'package:frontend/features/game/models/player.dart';
 
+/// An immutable data class holding the entire state of the game for the frontend UI.
 class GameStateModel {
   final List<Player> players;
   final GameState state;
@@ -81,6 +82,7 @@ class GameStateModel {
   }
 }
 
+/// Manages the game state and handles bidirectional WebSocket communication with the backend.
 class GameNotifier extends Notifier<GameStateModel> {
   StreamSubscription? _sub;
 
@@ -89,6 +91,7 @@ class GameNotifier extends Notifier<GameStateModel> {
     return GameStateModel();
   }
 
+  /// Initializes the game provider, connects to the WebSocket, and joins the room.
   void init(String nickname, String roomId, [Map<String, dynamic>? avatar]) {
     state = state.copyWith(nickname: nickname, roomId: roomId);
     final wsService = ref.read(webSocketServiceProvider);
@@ -106,6 +109,7 @@ class GameNotifier extends Notifier<GameStateModel> {
     });
   }
 
+  /// Central handler for parsing and applying all incoming WebSocket messages.
   void _handleMessage(Map<String, dynamic> data) {
     final type = data['type'];
 
@@ -142,8 +146,7 @@ class GameNotifier extends Notifier<GameStateModel> {
 
         if (oldState == GameState.choosing && gameState == GameState.drawing) {
           ref.read(audioServiceProvider).playRoundStart();
-        } else if (oldState == GameState.drawing &&
-            gameState == GameState.turnEnd) {
+        } else if (oldState == GameState.drawing && gameState == GameState.turnEnd) {
           ref.read(audioServiceProvider).stopTick();
 
           final me = state.players.firstWhere(
@@ -160,9 +163,7 @@ class GameNotifier extends Notifier<GameStateModel> {
             ),
           );
 
-          bool anyoneGuessed = state.players.any(
-            (p) => !p.isDrawer && p.guessedWord,
-          );
+          bool anyoneGuessed = state.players.any((p) => !p.isDrawer && p.guessedWord);
 
           if (me.isDrawer) {
             if (anyoneGuessed) {
@@ -225,8 +226,7 @@ class GameNotifier extends Notifier<GameStateModel> {
         if (data['isShadow'] == 'true') {
           color = 'shadow';
         }
-        if (data['content'] != null &&
-            (data['content'] as String).endsWith('is close!')) {
+        if (data['content'] != null && (data['content'] as String).endsWith('is close!')) {
           color = 'yellow';
         }
 
@@ -244,12 +244,7 @@ class GameNotifier extends Notifier<GameStateModel> {
 
       case 'vote_update':
         final newChats = List<Map<String, String>>.from(state.chatMessages)
-          ..add({
-            'sender': data['sender'],
-            'voteType': data['vote'],
-            'isVote': 'true',
-            'isSystem': 'false',
-          });
+          ..add({'sender': data['sender'], 'voteType': data['vote'], 'isVote': 'true', 'isSystem': 'false'});
         state = state.copyWith(chatMessages: newChats);
         break;
 
@@ -281,41 +276,35 @@ class GameNotifier extends Notifier<GameStateModel> {
     }
   }
 
+  /// Sends a chat message or guess to the backend.
   void sendChat(String content) {
-    ref.read(webSocketServiceProvider).sendMessage({
-      'type': 'chat',
-      'content': content,
-    });
+    ref.read(webSocketServiceProvider).sendMessage({'type': 'chat', 'content': content});
   }
 
+  /// Casts a vote (like/dislike) on the current drawing.
   void vote(String voteType) {
-    ref.read(webSocketServiceProvider).sendMessage({
-      'type': 'vote',
-      'vote': voteType,
-    });
+    ref.read(webSocketServiceProvider).sendMessage({'type': 'vote', 'vote': voteType});
   }
 
+  /// Submits the drawer's chosen word to the backend.
   void chooseWord(String word) {
-    ref.read(webSocketServiceProvider).sendMessage({
-      'type': 'choose_word',
-      'word': word,
-    });
+    ref.read(webSocketServiceProvider).sendMessage({'type': 'choose_word', 'word': word});
     state = state.copyWith(wordChoices: []);
   }
 
+  /// Sends an individual drawing action (stroke, clear, fill) to the backend.
   void sendDrawAction(Map<String, dynamic> action) {
     final payload = Map<String, dynamic>.from(action);
     payload['type'] = 'draw';
     ref.read(webSocketServiceProvider).sendMessage(payload);
   }
 
+  /// Casts a vote to kick a specific player from the room.
   void sendKickVote(String targetId) {
-    ref.read(webSocketServiceProvider).sendMessage({
-      'type': 'vote_kick',
-      'target': targetId,
-    });
+    ref.read(webSocketServiceProvider).sendMessage({'type': 'vote_kick', 'target': targetId});
   }
 
+  /// Cleans up resources, cancels subscriptions, and disconnects the WebSocket.
   void disposeGame() {
     _sub?.cancel();
     ref.read(audioServiceProvider).stopTick();
@@ -323,6 +312,5 @@ class GameNotifier extends Notifier<GameStateModel> {
   }
 }
 
-final gameProvider = NotifierProvider<GameNotifier, GameStateModel>(
-  GameNotifier.new,
-);
+/// The primary Riverpod provider for accessing and modifying the game state.
+final gameProvider = NotifierProvider<GameNotifier, GameStateModel>(GameNotifier.new);

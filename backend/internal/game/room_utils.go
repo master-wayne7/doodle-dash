@@ -4,6 +4,7 @@ import (
 	"strings"
 )
 
+// / levenshteinDistance calculates the minimum number of single-character edits to change one word into the other.
 func levenshteinDistance(a, b string) int {
 	a = strings.ToLower(a)
 	b = strings.ToLower(b)
@@ -40,6 +41,7 @@ func levenshteinDistance(a, b string) int {
 	return matrix[la][lb]
 }
 
+// / min3 returns the smallest of three integers.
 func min3(a, b, c int) int {
 	if a < b {
 		if a < c {
@@ -53,6 +55,7 @@ func min3(a, b, c int) int {
 	return c
 }
 
+// / closeThreshold determines the maximum Levenshtein distance allowed for a guess to be considered "close" based on word length.
 func closeThreshold(wordLen int) int {
 	switch {
 	case wordLen <= 5:
@@ -64,6 +67,7 @@ func closeThreshold(wordLen int) int {
 	}
 }
 
+// / getHintLocked returns the obfuscated word hint string for the current time. Drawers see the full word.
 func (r *Room) getHintLocked(isDrawer bool) string {
 	word := r.CurrentWord
 	if r.State != StateDrawing || len(word) == 0 {

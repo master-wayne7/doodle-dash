@@ -7,18 +7,27 @@ import (
 	"sync"
 )
 
+// / GameState represents the current phase of the game room.
 type GameState string
 
 const (
-	StateLobby    GameState = "lobby"
+	/// StateLobby indicates the room is waiting for players to join.
+	StateLobby GameState = "lobby"
+	/// StateStarting indicates the game is about to begin.
 	StateStarting GameState = "starting"
-	StateRound    GameState = "round"
+	/// StateRound indicates the start of a new round, consisting of multiple turns.
+	StateRound GameState = "round"
+	/// StateChoosing indicates the current drawer is selecting a word to draw.
 	StateChoosing GameState = "choosing"
-	StateDrawing  GameState = "drawing"
-	StateTurnEnd  GameState = "turn_end"
+	/// StateDrawing indicates the drawer is actively drawing and others are guessing.
+	StateDrawing GameState = "drawing"
+	/// StateTurnEnd indicates the turn has finished.
+	StateTurnEnd GameState = "turn_end"
+	/// StateGameOver indicates all rounds are complete and the final leaderboard is shown.
 	StateGameOver GameState = "game_over"
 )
 
+// / Room represents a single game session/lobby containing multiple clients.
 type Room struct {
 	ID      string
 	Hub     *Hub
@@ -42,6 +51,7 @@ type Room struct {
 	mu          sync.Mutex
 }
 
+// / NewRoom initializes and returns a new default Room instance.
 func NewRoom(id string, hub *Hub) *Room {
 	r := &Room{
 		ID:        id,
@@ -59,6 +69,7 @@ func NewRoom(id string, hub *Hub) *Room {
 	return r
 }
 
+// / Run starts the room's main event loop, listening for join and leave events.
 func (r *Room) Run() {
 	for {
 		select {
@@ -70,6 +81,7 @@ func (r *Room) Run() {
 	}
 }
 
+// / changeState securely transitions the room into a new game state and triggers the required setup for that state.
 func (r *Room) changeState(newState GameState) {
 	r.mu.Lock()
 	r.State = newState

@@ -1,5 +1,7 @@
+/// Enum representing the various phases a game room can be in.
 enum GameState { lobby, starting, round, choosing, drawing, turnEnd, gameOver }
 
+/// Parses a string from the backend into the corresponding [GameState] enum.
 GameState parseGameState(String state) {
   switch (state) {
     case 'starting':

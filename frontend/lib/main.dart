@@ -1,18 +1,34 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:frontend/core/router/app_router.dart';
+import 'package:frontend/core/audio/audio_service.dart';
 
-void main() {
-  runApp(const ProviderScope(child: SkribblCloneApp()));
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  runApp(const ProviderScope(child: DoodleDashApp()));
 }
 
-class SkribblCloneApp extends StatelessWidget {
-  const SkribblCloneApp({super.key});
+class DoodleDashApp extends ConsumerStatefulWidget {
+  const DoodleDashApp({super.key});
+
+  @override
+  ConsumerState<DoodleDashApp> createState() => _DoodleDashAppState();
+}
+
+class _DoodleDashAppState extends ConsumerState<DoodleDashApp> {
+  @override
+  void initState() {
+    super.initState();
+    // Preload audio files as soon as the app starts
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(audioServiceProvider).init();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp.router(
-      title: 'Skribbl.io Clone',
+      title: 'Doodle Dash',
       debugShowCheckedModeBanner: false,
       routerConfig: appRouter,
       theme: ThemeData(
@@ -20,22 +36,14 @@ class SkribblCloneApp extends StatelessWidget {
         primaryColor: const Color(0xFF5A4AE3),
         scaffoldBackgroundColor: const Color(0xFFF1F5F9),
         fontFamily: 'Comic Sans MS',
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF5A4AE3),
-          secondary: const Color(0xFFFF5E5B),
-        ),
+        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF5A4AE3), secondary: const Color(0xFFFF5E5B)),
         elevatedButtonTheme: ElevatedButtonThemeData(
           style: ElevatedButton.styleFrom(
             backgroundColor: const Color(0xFF5A4AE3),
             foregroundColor: Colors.white,
-            textStyle: const TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-            ),
+            textStyle: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
             padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 15),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(30),
-            ),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
           ),
         ),
       ),

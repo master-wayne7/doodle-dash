@@ -4,6 +4,7 @@ import 'package:frontend/features/game/providers/game_provider.dart';
 import 'package:frontend/features/game/models/player.dart';
 import 'package:frontend/features/game/widgets/player_list_item.dart';
 
+/// Displays the list of players currently in the room, their scores, and current states (e.g., drawer, guessed).
 class PlayerList extends ConsumerWidget {
   final double width;
 

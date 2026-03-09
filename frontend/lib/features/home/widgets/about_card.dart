@@ -24,7 +24,7 @@ class AboutCard extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           const Text(
-            'skribbl.io is a free online multiplayer drawing and guessing pictionary game.\n\n'
+            'Doodle Dash is a free online multiplayer drawing and guessing pictionary game.\n\n'
             'A normal game consists of a few rounds, where every round a player has to draw their chosen word and others have to guess it to gain points!\n\n'
             'The person with the most points at the end of the game, will then be crowned as the winner!\n'
             'Have fun!',

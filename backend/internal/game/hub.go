@@ -8,6 +8,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+// / Hub maintains the set of active rooms and unattached clients, and handles message routing.
 type Hub struct {
 	Rooms      map[string]*Room
 	Clients    map[*Client]bool
@@ -18,6 +19,7 @@ type Hub struct {
 	mu sync.Mutex
 }
 
+// / NewHub initializes and returns a new empty Hub.
 func NewHub() *Hub {
 	return &Hub{
 		Rooms:      make(map[string]*Room),
@@ -28,6 +30,7 @@ func NewHub() *Hub {
 	}
 }
 
+// / Run starts the Hub's main event loop for client registration, unregistration, and room deletion.
 func (h *Hub) Run() {
 	for {
 		select {
@@ -50,6 +53,7 @@ func (h *Hub) Run() {
 	}
 }
 
+// / ProcessMessage parses incoming messages from clients not yet fully assigned to a room context (like joining a room).
 func (h *Hub) ProcessMessage(c *Client, msg map[string]interface{}) {
 	msgType, ok := msg["type"].(string)
 	if !ok {
@@ -126,6 +130,7 @@ const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 
 var seededRand *rand.Rand = rand.New(rand.NewSource(time.Now().UnixNano()))
 
+// / generateRandomString creates a random alphanumeric string of a given length, primarily used for IDs.
 func generateRandomString(length int) string {
 	b := make([]byte, length)
 	for i := range b {

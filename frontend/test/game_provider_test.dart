@@ -7,8 +7,7 @@ import 'package:frontend/features/game/models/game_state.dart';
 
 // Mock WebSocketService to intercept connect/sendMessage
 class MockWebSocketService extends WebSocketService {
-  final StreamController<Map<String, dynamic>> _mockController =
-      StreamController.broadcast();
+  final StreamController<Map<String, dynamic>> _mockController = StreamController.broadcast();
   List<Map<String, dynamic>> sentMessages = [];
   bool isConnected = false;
 
@@ -40,12 +39,10 @@ class MockWebSocketService extends WebSocketService {
 void main() {
   test('GameNotifier initialization sends join_room event', () async {
     final mockWs = MockWebSocketService();
-    final container = ProviderContainer(
-      overrides: [webSocketServiceProvider.overrideWithValue(mockWs)],
-    );
+    final container = ProviderContainer(overrides: [webSocketServiceProvider.overrideWithValue(mockWs)]);
 
-    final notifier = container.read(gameProvider.notifier);
-    notifier.init('Tester', 'Room123');
+    // Initialize provider with test data
+    container.read(gameProvider.notifier).init('Tester', 'Room123');
 
     // State should be updated
     final state = container.read(gameProvider);
@@ -63,18 +60,12 @@ void main() {
 
   test('GameNotifier handles chat events', () async {
     final mockWs = MockWebSocketService();
-    final container = ProviderContainer(
-      overrides: [webSocketServiceProvider.overrideWithValue(mockWs)],
-    );
+    final container = ProviderContainer(overrides: [webSocketServiceProvider.overrideWithValue(mockWs)]);
 
     final notifier = container.read(gameProvider.notifier);
 
     // Simulate incoming chat message
-    mockWs.simulateServerMessage({
-      'type': 'chat',
-      'sender': 'Player2',
-      'content': 'Hello world',
-    });
+    mockWs.simulateServerMessage({'type': 'chat', 'sender': 'Player2', 'content': 'Hello world'});
 
     // We yield to let stream process
     await Future.delayed(Duration.zero);
@@ -88,9 +79,7 @@ void main() {
 
   test('GameNotifier changes game state appropriately', () async {
     final mockWs = MockWebSocketService();
-    final container = ProviderContainer(
-      overrides: [webSocketServiceProvider.overrideWithValue(mockWs)],
-    );
+    final container = ProviderContainer(overrides: [webSocketServiceProvider.overrideWithValue(mockWs)]);
 
     mockWs.simulateServerMessage({'type': 'game_state', 'state': 'drawing'});
 

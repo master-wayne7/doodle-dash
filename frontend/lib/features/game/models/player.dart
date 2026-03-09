@@ -1,3 +1,4 @@
+/// Represents the visual properties of a player's avatar.
 class AvatarData {
   final int color;
   final int eyes;
@@ -11,6 +12,7 @@ class AvatarData {
   }
 }
 
+/// Represents a single player in the game room, including their state and score.
 class Player {
   final String id;
   final String nickname;

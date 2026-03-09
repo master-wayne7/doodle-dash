@@ -8,6 +8,8 @@ import 'package:frontend/features/game/widgets/chat_box.dart';
 import 'package:frontend/features/game/widgets/top_bar.dart';
 import 'package:frontend/features/game/widgets/game_overlays.dart';
 
+/// The primary screen for the Skribbl game.
+/// It initializes the WebSocket connection and arranges the layout based on screen size.
 class GameScreen extends ConsumerStatefulWidget {
   final String nickname;
   final String roomId;
@@ -148,6 +150,7 @@ class _GameScreenState extends ConsumerState<GameScreen> {
   }
 }
 
+/// A helper widget that builds the central game area, including the drawing board and overlays.
 class _MainGameArea extends ConsumerWidget {
   final bool isDrawer;
   final GameState gameState;

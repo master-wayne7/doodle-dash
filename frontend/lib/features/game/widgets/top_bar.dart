@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:frontend/features/game/providers/game_provider.dart';
 import 'package:frontend/features/game/models/game_state.dart';
 
+/// The persistent top bar displaying the current round, timer, and the word/hint to guess or draw.
 class TopBar extends ConsumerWidget {
   const TopBar({super.key});
 
@@ -22,14 +23,16 @@ class TopBar extends ConsumerWidget {
         topText = 'DRAW THIS';
         bottomText = gameStateModel.word;
       } else {
-        topText = 'GUESS THIS';
-        bottomText = gameStateModel.hint;
-        wordLength =
-            gameStateModel.hint
-                .split(' ')
-                .where((s) => s.isNotEmpty && s != '_')
-                .length +
-            gameStateModel.hint.split(' ').where((s) => s == '_').length;
+        if (gameStateModel.word.isNotEmpty) {
+          topText = 'WORD GUESSED';
+          bottomText = gameStateModel.word.toUpperCase();
+        } else {
+          topText = 'GUESS THIS';
+          bottomText = gameStateModel.hint;
+          wordLength =
+              gameStateModel.hint.split(' ').where((s) => s.isNotEmpty && s != '_').length +
+              gameStateModel.hint.split(' ').where((s) => s == '_').length;
+        }
       }
     } else if (systemMessage != null) {
       topText = systemMessage;
@@ -52,10 +55,7 @@ class TopBar extends ConsumerWidget {
                     top: 14,
                     child: Text(
                       '${gameStateModel.timeLeft}',
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
+                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                     ),
                   ),
                 ],
@@ -63,10 +63,7 @@ class TopBar extends ConsumerWidget {
               const SizedBox(width: 16),
               Text(
                 'Round ${gameStateModel.round} of ${gameStateModel.maxRounds}',
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
+                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
             ],
           ),
@@ -76,10 +73,7 @@ class TopBar extends ConsumerWidget {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(
-                  topText,
-                  style: const TextStyle(fontSize: 14, color: Colors.black54),
-                ),
+                Text(topText, style: const TextStyle(fontSize: 14, color: Colors.black54)),
                 if (bottomText.isNotEmpty)
                   Row(
                     mainAxisSize: MainAxisSize.min,
@@ -87,21 +81,11 @@ class TopBar extends ConsumerWidget {
                     children: [
                       Text(
                         bottomText,
-                        style: const TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 2.0,
-                        ),
+                        style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, letterSpacing: 2.0),
                       ),
                       if (wordLength != null) ...[
                         const SizedBox(width: 4),
-                        Text(
-                          '$wordLength',
-                          style: const TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
+                        Text('$wordLength', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
                       ],
                     ],
                   ),
