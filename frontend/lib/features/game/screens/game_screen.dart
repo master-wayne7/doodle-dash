@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:frontend/features/game/providers/game_provider.dart';
-import 'package:frontend/features/game/models/game_state.dart';
-import 'package:frontend/features/game/widgets/drawing_board.dart';
-import 'package:frontend/features/game/widgets/player_list.dart';
-import 'package:frontend/features/game/widgets/chat_box.dart';
-import 'package:frontend/features/game/widgets/top_bar.dart';
-import 'package:frontend/features/game/widgets/game_overlays.dart';
+import 'package:go_router/go_router.dart';
+import 'package:doodle_dash/features/game/providers/game_provider.dart';
+import 'package:doodle_dash/features/game/models/game_state.dart';
+import 'package:doodle_dash/features/game/widgets/drawing_board.dart';
+import 'package:doodle_dash/features/game/widgets/player_list.dart';
+import 'package:doodle_dash/features/game/widgets/chat_box.dart';
+import 'package:doodle_dash/features/game/widgets/top_bar.dart';
+import 'package:doodle_dash/features/game/widgets/game_overlays.dart';
 
 /// The primary screen for the Skribbl game.
 /// It initializes the WebSocket connection and arranges the layout based on screen size.
@@ -38,15 +39,28 @@ class _GameScreenState extends ConsumerState<GameScreen> {
           context: context,
           barrierDismissible: false,
           builder: (context) => AlertDialog(
-            title: const Text('Kicked Out'),
-            content: const Text('You have been kicked out of the room.'),
+            backgroundColor: const Color.fromARGB(255, 12, 44, 150),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(0)),
+            title: const Text(
+              'Kicked Out',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.white),
+            ),
+            content: const Text('You have been kicked out of the room.', style: TextStyle(color: Colors.white)),
             actions: [
-              TextButton(
-                onPressed: () {
-                  Navigator.of(context).pop(); // Close dialog
-                  Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
-                },
-                child: const Text('OK'),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () {
+                    Navigator.of(context).pop(); // Close dialog
+                    context.go('/');
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF1E2CB3),
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
+                  child: const Text('OK'),
+                ),
               ),
             ],
           ),

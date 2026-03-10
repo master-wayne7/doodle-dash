@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:frontend/features/game/providers/game_provider.dart';
-import 'package:frontend/features/game/models/player.dart';
-import 'package:frontend/features/game/widgets/player_list_item.dart';
+import 'package:doodle_dash/features/game/providers/game_provider.dart';
+import 'package:doodle_dash/features/game/models/player.dart';
+import 'package:doodle_dash/features/game/widgets/player_list_item.dart';
 
 /// Displays the list of players currently in the room, their scores, and current states (e.g., drawer, guessed).
 class PlayerList extends ConsumerWidget {

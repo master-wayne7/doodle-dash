@@ -1,6 +1,6 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
-import 'package:frontend/features/shared/widgets/avatar_display.dart';
+import 'package:doodle_dash/features/shared/widgets/avatar_display.dart';
 
 class AvatarSelector extends StatefulWidget {
   final void Function(int color, int eyes, int mouth) onAvatarChanged;
@@ -70,10 +70,7 @@ class _AvatarSelectorState extends State<AvatarSelector> {
           maxHeight: atlasSize * scale,
           alignment: Alignment.topLeft,
           child: Transform.translate(
-            offset: Offset(
-              -col * spriteSize * scale,
-              -row * spriteSize * scale,
-            ),
+            offset: Offset(-col * spriteSize * scale, -row * spriteSize * scale),
             child: Image.asset(
               asset,
               width: atlasSize * scale,
@@ -88,9 +85,7 @@ class _AvatarSelectorState extends State<AvatarSelector> {
   }
 
   Widget _buildArrow(bool isLeft, VoidCallback onTap) {
-    final int index = isLeft
-        ? 0
-        : 2; // 0 is white left, 2 is white right from 2x2 grid
+    final int index = isLeft ? 0 : 2; // 0 is white left, 2 is white right from 2x2 grid
     return GestureDetector(
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
@@ -127,19 +122,10 @@ class _AvatarSelectorState extends State<AvatarSelector> {
       alignment: Alignment.center,
       children: [
         // Background container to match image style
-        Container(
-          width: 400,
-          height: 180,
-          decoration: BoxDecoration(color: const Color(0x1A000000)),
-        ),
+        Container(width: 400, height: 180, decoration: BoxDecoration(color: const Color(0x1A000000))),
 
         // Avatar Display
-        AvatarDisplay(
-          colorIndex: _colorIndex,
-          eyesIndex: _eyesIndex,
-          mouthIndex: _mouthIndex,
-          scale: 2.50,
-        ),
+        AvatarDisplay(colorIndex: _colorIndex, eyesIndex: _eyesIndex, mouthIndex: _mouthIndex, scale: 2.50),
 
         // Controls
         SizedBox(
@@ -147,11 +133,7 @@ class _AvatarSelectorState extends State<AvatarSelector> {
           height: 150,
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              _buildRowControls('eyes'),
-              _buildRowControls('mouth'),
-              _buildRowControls('color'),
-            ],
+            children: [_buildRowControls('eyes'), _buildRowControls('mouth'), _buildRowControls('color')],
           ),
         ),
 

@@ -1,9 +1,9 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:frontend/features/game/providers/game_provider.dart';
-import 'package:frontend/features/game/models/player.dart';
-import 'package:frontend/features/shared/widgets/avatar_display.dart';
+import 'package:doodle_dash/features/game/providers/game_provider.dart';
+import 'package:doodle_dash/features/game/models/player.dart';
+import 'package:doodle_dash/features/shared/widgets/avatar_display.dart';
 
 /// Represents an individual player row within the [PlayerList], handling kick votes and temporary chat/vote bubbles.
 class PlayerListItem extends ConsumerStatefulWidget {
@@ -69,9 +69,7 @@ class PlayerListItemState extends ConsumerState<PlayerListItem> {
   void _showTextBubble(String msg) {
     _hideBubble();
     _overlayEntry = _createOverlayEntry(
-      child: Flexible(
-        child: Text(msg, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
-      ),
+      child: Text(msg, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
     );
     Overlay.of(context).insert(_overlayEntry!);
   }

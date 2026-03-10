@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:frontend/features/game/providers/game_provider.dart';
-import 'package:frontend/features/game/models/game_state.dart';
+import 'package:doodle_dash/features/game/providers/game_provider.dart';
+import 'package:doodle_dash/features/game/models/game_state.dart';
 
 /// The persistent top bar displaying the current round, timer, and the word/hint to guess or draw.
 class TopBar extends ConsumerWidget {

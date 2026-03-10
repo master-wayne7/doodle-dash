@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:frontend/features/game/providers/game_provider.dart';
+import 'package:doodle_dash/features/game/providers/game_provider.dart';
 
 /// Displays the real-time chat messages, system notifications, and provides an input field for guessing.
 class ChatBox extends ConsumerStatefulWidget {

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:frontend/features/game/models/player.dart';
-import 'package:frontend/features/shared/widgets/avatar_display.dart';
+import 'package:doodle_dash/features/game/models/player.dart';
+import 'package:doodle_dash/features/shared/widgets/avatar_display.dart';
 
 /// A wrapper widget that animates the appearance and disappearance of its child overlay.
 class GameOverlayWrapper extends StatefulWidget {

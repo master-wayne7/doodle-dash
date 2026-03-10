@@ -44,6 +44,7 @@ type Client struct {
 	JoinedAt    time.Time
 	Voted       bool
 	Avatar      Avatar
+	GuessedAt   *time.Time
 }
 
 // ReadPump pumps messages from the websocket connection to the room.

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math/rand"
 	"sync"
+	"time"
 )
 
 // / GameState represents the current phase of the game room.
@@ -35,16 +36,17 @@ type Room struct {
 	Join    chan *Client
 	Leave   chan *Client
 
-	State       GameState
-	RoundNumber int
-	MaxRounds   int
-	CurrentWord string
-	WordChoices []string
-	Drawer      *Client
-	TurnQueue   []*Client
-	DrawHistory []map[string]interface{}
-	HintIndices []int
-	VoteKicks   map[string]map[string]bool // TargetID -> {VoterID: true}
+	State          GameState
+	RoundNumber    int
+	MaxRounds      int
+	CurrentWord    string
+	WordChoices    []string
+	Drawer         *Client
+	TurnQueue      []*Client
+	DrawHistory    []map[string]interface{}
+	HintIndices    []int
+	VoteKicks      map[string]map[string]bool // TargetID -> {VoterID: true}
+	RoundStartedAt time.Time
 
 	TimeLeft    int
 	tickerMutex sync.Mutex
@@ -89,10 +91,10 @@ func (r *Room) changeState(newState GameState) {
 	switch newState {
 	case StateLobby:
 		r.setTimeLeft(0)
-		r.broadcastSystemMessageLocked("Waiting for more players...")
+		r.broadcastSystemMessageLocked("Waiting for more players...", "blue")
 	case StateStarting:
 		r.setTimeLeft(5)
-		r.broadcastSystemMessageLocked("Game is starting soon...")
+		r.broadcastSystemMessageLocked("Game is starting soon...", "blue")
 		r.broadcastGameStateLocked()
 	case StateRound:
 		r.broadcastGameStateLocked()
@@ -115,32 +117,34 @@ func (r *Room) changeState(newState GameState) {
 		})
 		if r.Drawer != nil {
 			r.Drawer.Send <- choicesMsg
-			r.broadcastSystemMessageLocked(fmt.Sprintf("%s is choosing a word...", r.Drawer.Nickname))
+			r.broadcastSystemMessageLocked(fmt.Sprintf("%s is choosing a word...", r.Drawer.Nickname), "blue")
 		}
 		r.broadcastGameStateLocked()
 		r.setTimeLeft(10)
 	case StateDrawing:
 		r.setTimeLeft(60)
+		r.RoundStartedAt = time.Now()
 		for c := range r.Clients {
 			c.TurnScore = 0
 			c.Voted = false
 		}
 		r.broadcastGameStateLocked()
 		r.broadcastPlayerListLocked()
-		r.broadcastSystemMessageLocked(fmt.Sprintf("%s is drawing!", r.Drawer.Nickname))
+		r.broadcastSystemMessageLocked(fmt.Sprintf("%s is drawing!", r.Drawer.Nickname), "blue")
 	case StateTurnEnd:
+		r.calculateFinalScores()
 		r.DrawHistory = make([]map[string]interface{}, 0)
 		for c := range r.Clients {
 			c.Score += c.TurnScore
 		}
 		r.VoteKicks = make(map[string]map[string]bool)
 		r.broadcastMessageLocked([]byte(`{"type": "draw", "action": "clear"}`))
-		r.broadcastSystemMessageLocked(fmt.Sprintf("Turn over! The word was: %s", r.CurrentWord))
+		r.broadcastSystemMessageLocked(fmt.Sprintf("Turn over! The word was: %s", r.CurrentWord), "green")
 		r.broadcastGameStateLocked()
 		r.broadcastPlayerListLocked()
 		r.setTimeLeft(5)
 	case StateGameOver:
-		r.broadcastSystemMessageLocked("Game Over!")
+		r.broadcastSystemMessageLocked("Game Over!", "yellow")
 		r.broadcastGameStateLocked()
 		r.setTimeLeft(10)
 	}

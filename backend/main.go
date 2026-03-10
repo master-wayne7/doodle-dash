@@ -6,7 +6,7 @@ import (
 
 	log "github.com/sirupsen/logrus"
 
-	"skribbl-backend/internal/game"
+	"doodle-dash-backend/internal/game"
 )
 
 func init() {

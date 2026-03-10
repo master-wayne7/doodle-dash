@@ -1,9 +1,9 @@
 import 'dart:async';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:frontend/core/websocket/websocket_service.dart';
-import 'package:frontend/features/game/providers/game_provider.dart';
-import 'package:frontend/features/game/models/game_state.dart';
+import 'package:doodle_dash/core/websocket/websocket_service.dart';
+import 'package:doodle_dash/features/game/providers/game_provider.dart';
+import 'package:doodle_dash/features/game/models/game_state.dart';
 
 // Mock WebSocketService to intercept connect/sendMessage
 class MockWebSocketService extends WebSocketService {

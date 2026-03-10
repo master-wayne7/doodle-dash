@@ -26,17 +26,18 @@ func (r *Room) broadcastMessageLocked(message []byte) {
 }
 
 // / broadcastSystemMessage sends a structured system-level chat message to all clients.
-func (r *Room) broadcastSystemMessage(msg string) {
+func (r *Room) broadcastSystemMessage(msg string, color string) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	r.broadcastSystemMessageLocked(msg)
+	r.broadcastSystemMessageLocked(msg, color)
 }
 
 // / broadcastSystemMessageLocked sends a structured system message without acquiring the lock.
-func (r *Room) broadcastSystemMessageLocked(msg string) {
+func (r *Room) broadcastSystemMessageLocked(msg string, color string) {
 	b, _ := json.Marshal(map[string]interface{}{
 		"type":    "system",
 		"content": msg,
+		"color":   color,
 	})
 	r.broadcastMessageLocked(b)
 }

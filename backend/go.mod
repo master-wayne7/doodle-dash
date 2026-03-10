@@ -1,4 +1,4 @@
-module skribbl-backend
+module doodle-dash-backend
 
 go 1.23.0
 

@@ -3,7 +3,10 @@ package game
 import (
 	"encoding/json"
 	"fmt"
+	"math"
+	"sort"
 	"strings"
+	"time"
 )
 
 // / ProcessMessage routes incoming client messages to the appropriate handler based on the message type.
@@ -40,11 +43,17 @@ func (r *Room) handleChat(c *Client, msg map[string]interface{}) {
 		isShadow = "true"
 	}
 
+	color := "black"
+	if isShadow == "true" {
+		color = "shadow"
+	}
+
 	b, _ := json.Marshal(map[string]interface{}{
 		"type":     "chat",
 		"sender":   c.Nickname,
 		"content":  content,
 		"isShadow": isShadow,
+		"color":    color,
 	})
 
 	if isShadow == "true" {
@@ -65,25 +74,31 @@ func (r *Room) handleChat(c *Client, msg map[string]interface{}) {
 	if r.State == StateDrawing && !c.GuessedWord && !c.IsDrawer {
 		dist := levenshteinDistance(content, r.CurrentWord)
 		if dist > 0 && dist <= closeThreshold(len(r.CurrentWord)) {
-			c.SendPrivateMessage(fmt.Sprintf("%s is close!", content))
+			// Send a "close" message via broadcast but with color yellow for the private message effectively
+			b, _ := json.Marshal(map[string]interface{}{
+				"type":    "system",
+				"content": fmt.Sprintf("%s is close!", content),
+				"color":   "yellow",
+			})
+			select {
+			case c.Send <- b:
+			default:
+			}
 		}
 	}
 }
 
 // / markGuessed updates a client's state after correctly guessing the word, awards points, and checks if the turn should end.
 func (r *Room) markGuessed(c *Client) {
+	now := time.Now()
 	c.GuessedWord = true
-	points := (r.TimeLeft * 10) + (len(r.Clients) * 5)
-	if points < 10 {
-		points = 10
-	}
-	c.TurnScore += points
+	c.GuessedAt = &now
 
 	if r.Drawer != nil {
-		r.Drawer.TurnScore += points / (len(r.Clients) - 1)
+		// Drawer logic moved to calculateFinalScores
 	}
 
-	r.broadcastSystemMessage(fmt.Sprintf("%s guessed the word!", c.Nickname))
+	r.broadcastSystemMessage(fmt.Sprintf("%s guessed the word!", c.Nickname), "green")
 	r.broadcastPlayerList()
 
 	r.mu.Lock()
@@ -129,7 +144,11 @@ func (r *Room) handleVote(c *Client, msg map[string]interface{}) {
 	if r.State == StateDrawing && !c.IsDrawer && !c.Voted {
 		voteType, _ := msg["vote"].(string)
 		c.Voted = true
-		r.broadcastSystemMessage(fmt.Sprintf("%s has %sd the drawing!", c.Nickname, voteType))
+		color := "green"
+		if voteType == "dislike" {
+			color = "red"
+		}
+		r.broadcastSystemMessage(fmt.Sprintf("%s has %sd the drawing!", c.Nickname, voteType), color)
 		b, _ := json.Marshal(map[string]interface{}{
 			"type": "vote_update", "sender": c.Nickname, "vote": voteType,
 		})
@@ -180,7 +199,7 @@ func (r *Room) handleVoteKick(c *Client, msg map[string]interface{}) {
 		threshold = 5
 	}
 
-	r.broadcastSystemMessage(fmt.Sprintf("%s has voted to kick %s [%d/%d]", c.Nickname, targetClient.Nickname, votes, threshold))
+	r.broadcastSystemMessage(fmt.Sprintf("%s has voted to kick %s [%d/%d]", c.Nickname, targetClient.Nickname, votes, threshold), "yellow")
 
 	if votes >= threshold {
 		kickedMsg, _ := json.Marshal(map[string]interface{}{"type": "kicked"})
@@ -189,5 +208,63 @@ func (r *Room) handleVoteKick(c *Client, msg map[string]interface{}) {
 		default:
 		}
 		r.Leave <- targetClient
+	}
+}
+
+func (r *Room) calculateFinalScores() {
+	const (
+		MaxPoints     = 500
+		DrawTime      = 60 // seconds
+		DrawerBase    = 100
+		BonusPerGuess = 50
+	)
+
+	// Round to nearest 5 helper
+	roundTo5 := func(n int) int {
+		return int(math.Round(float64(n)/5.0) * 5.0)
+	}
+
+	var guessers []*Client
+	for client := range r.Clients {
+		if client.GuessedWord && client.GuessedAt != nil {
+			guessers = append(guessers, client)
+		}
+	}
+
+	if len(guessers) == 0 {
+		return
+	}
+
+	sort.Slice(guessers, func(i, j int) bool {
+		return guessers[i].GuessedAt.Before(*guessers[j].GuessedAt)
+	})
+
+	totalGuessers := len(guessers)
+
+	// Guesser points
+	for i, player := range guessers {
+		guessTime := player.GuessedAt.Sub(r.RoundStartedAt).Seconds()
+		timeRemaining := math.Max(float64(DrawTime)-guessTime, 0)
+
+		timeScore := (timeRemaining / DrawTime) * 350
+		orderScore := (1.0 - float64(i)/float64(totalGuessers)) * 150
+
+		earned := int(math.Round(timeScore + orderScore))
+		earned = roundTo5(earned)
+		if earned > MaxPoints {
+			earned = MaxPoints
+		}
+
+		player.TurnScore = earned
+	}
+
+	// Drawer points
+	if r.Drawer != nil {
+		drawerPoints := DrawerBase + totalGuessers*BonusPerGuess
+		drawerPoints = roundTo5(drawerPoints)
+		if drawerPoints > MaxPoints {
+			drawerPoints = MaxPoints
+		}
+		r.Drawer.TurnScore = drawerPoints
 	}
 }

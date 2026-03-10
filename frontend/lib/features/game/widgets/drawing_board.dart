@@ -1,9 +1,9 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:frontend/core/websocket/websocket_service.dart';
-import 'package:frontend/features/game/providers/game_provider.dart';
-import 'package:frontend/features/game/models/game_state.dart';
+import 'package:doodle_dash/core/websocket/websocket_service.dart';
+import 'package:doodle_dash/features/game/providers/game_provider.dart';
+import 'package:doodle_dash/features/game/models/game_state.dart';
 
 /// Represents a single continuous stroke drawn on the canvas.
 class DrawnPath {
@@ -483,6 +483,6 @@ class _VoteButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(onTap: onTap, child: Image.asset(image, width: 40, height: 40));
+    return GestureDetector(onTap: onTap, child: Image.asset(image, width: 60, height: 60));
   }
 }

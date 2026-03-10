@@ -15,7 +15,7 @@ func (r *Room) addClient(client *Client) {
 
 	r.sendGameStateToLocked(client)
 	r.broadcastPlayerListLocked()
-	r.broadcastSystemMessageLocked(fmt.Sprintf("%s has joined the room", client.Nickname))
+	r.broadcastSystemMessageLocked(fmt.Sprintf("%s has joined the room", client.Nickname), "blue")
 	r.mu.Unlock()
 
 	for _, histMsg := range history {
@@ -44,7 +44,7 @@ func (r *Room) removeClient(client *Client) {
 		return
 	}
 	r.broadcastPlayerListLocked()
-	r.broadcastSystemMessageLocked(fmt.Sprintf("%s has left the room", client.Nickname))
+	r.broadcastSystemMessageLocked(fmt.Sprintf("%s has left the room", client.Nickname), "red")
 	r.mu.Unlock()
 
 	if state == StateDrawing && isDrawer {

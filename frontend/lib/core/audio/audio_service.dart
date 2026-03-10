@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -60,16 +61,36 @@ class AudioService {
   void playRoundStart() => _play('audio/roundStart.ogg');
 
   AudioPlayer? _tickPlayer;
+  bool _isTicking = false;
 
   Future<void> startTick() async {
-    if (_tickPlayer != null) return;
+    if (_isTicking) return;
+    _isTicking = true;
+    _tickLoop();
+  }
 
-    _tickPlayer = AudioPlayer(playerId: DateTime.now().millisecondsSinceEpoch.toString());
-    await _tickPlayer!.setReleaseMode(ReleaseMode.loop);
-    await _tickPlayer!.play(AssetSource('audio/tick.ogg'));
+  Future<void> _tickLoop() async {
+    while (_isTicking) {
+      _tickPlayer = AudioPlayer(playerId: 'tick_${DateTime.now().millisecondsSinceEpoch}');
+      _tickPlayer!.setPlayerMode(PlayerMode.lowLatency);
+
+      await _tickPlayer!.play(AssetSource('audio/tick.ogg'));
+
+      // Wait for playback to complete
+      await _tickPlayer!.onPlayerComplete.first;
+
+      await _tickPlayer!.dispose();
+      _tickPlayer = null;
+
+      if (!_isTicking) break;
+
+      // 200ms gap
+      await Future.delayed(const Duration(milliseconds: 400));
+    }
   }
 
   Future<void> stopTick() async {
+    _isTicking = false;
     await _tickPlayer?.stop();
     await _tickPlayer?.dispose();
     _tickPlayer = null;

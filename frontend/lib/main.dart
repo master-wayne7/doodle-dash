@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:frontend/core/router/app_router.dart';
-import 'package:frontend/core/audio/audio_service.dart';
+import 'package:doodle_dash/core/router/app_router.dart';
+import 'package:doodle_dash/core/audio/audio_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -35,7 +35,7 @@ class _DoodleDashAppState extends ConsumerState<DoodleDashApp> {
         useMaterial3: true,
         primaryColor: const Color(0xFF5A4AE3),
         scaffoldBackgroundColor: const Color(0xFFF1F5F9),
-        fontFamily: 'Comic Sans MS',
+        fontFamily: 'Nunito',
         colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF5A4AE3), secondary: const Color(0xFFFF5E5B)),
         elevatedButtonTheme: ElevatedButtonThemeData(
           style: ElevatedButton.styleFrom(

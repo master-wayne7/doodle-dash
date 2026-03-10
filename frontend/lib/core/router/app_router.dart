@@ -1,6 +1,6 @@
 import 'package:go_router/go_router.dart';
-import 'package:frontend/features/home/screens/home_screen.dart';
-import 'package:frontend/features/game/screens/game_screen.dart';
+import 'package:doodle_dash/features/home/screens/home_screen.dart';
+import 'package:doodle_dash/features/game/screens/game_screen.dart';
 
 final appRouter = GoRouter(
   initialLocation: '/',

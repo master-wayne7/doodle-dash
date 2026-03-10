@@ -1,9 +1,9 @@
 import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:frontend/core/websocket/websocket_service.dart';
-import 'package:frontend/core/audio/audio_service.dart';
-import 'package:frontend/features/game/models/game_state.dart';
-import 'package:frontend/features/game/models/player.dart';
+import 'package:doodle_dash/core/websocket/websocket_service.dart';
+import 'package:doodle_dash/core/audio/audio_service.dart';
+import 'package:doodle_dash/features/game/models/game_state.dart';
+import 'package:doodle_dash/features/game/models/player.dart';
 
 /// An immutable data class holding the entire state of the game for the frontend UI.
 class GameStateModel {
@@ -206,21 +206,12 @@ class GameNotifier extends Notifier<GameStateModel> {
           ref.read(audioServiceProvider).playPlayerGuessed();
         }
 
-        String color = 'green';
-        if (msg.endsWith('has joined the room')) {
-          color = 'blue';
-        } else if (msg.endsWith('has left the room')) {
-          color = 'red';
-        } else if (msg.contains('voted to kick')) {
-          color = 'yellow';
-        }
-
         final newChats = List<Map<String, String>>.from(state.chatMessages)
           ..add({
             'sender': 'System',
             'content': msg,
             'isSystem': 'true',
-            'color': color,
+            'color': data['color'] ?? 'green',
             'colorIndex': '${state.chatMessages.length % 2}',
           });
         state = state.copyWith(systemMessage: msg, chatMessages: newChats);
@@ -231,21 +222,17 @@ class GameNotifier extends Notifier<GameStateModel> {
         break;
 
       case 'chat':
-        String color = 'black';
-        if (data['isShadow'] == 'true') {
-          color = 'shadow';
-        }
-        if (data['content'] != null && (data['content'] as String).endsWith('is close!')) {
-          color = 'yellow';
-        }
+        final sender = data['sender'] as String? ?? 'Unknown';
+        final content = data['content'] as String? ?? '';
+        if (content.isEmpty) break;
 
         final newChats = List<Map<String, String>>.from(state.chatMessages)
           ..add({
-            'sender': data['sender'],
-            'content': data['content'],
-            'isSystem': data['isSystem'] ?? 'false',
-            'isShadow': data['isShadow'] ?? 'false',
-            'color': color,
+            'sender': sender,
+            'content': content,
+            'isSystem': data['isSystem']?.toString() ?? 'false',
+            'isShadow': data['isShadow']?.toString() ?? 'false',
+            'color': data['color'] ?? 'black',
             'colorIndex': '${state.chatMessages.length % 2}',
           });
         state = state.copyWith(chatMessages: newChats);

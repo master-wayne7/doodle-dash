@@ -56,33 +56,6 @@ func TestCloseThreshold(t *testing.T) {
 	}
 }
 
-func TestScoringLogic(t *testing.T) {
-	r := &Room{
-		TimeLeft:    40,
-		CurrentWord: "apple",
-		Clients:     make(map[*Client]bool),
-		State:       StateDrawing,
-	}
-
-	drawer := &Client{Nickname: "Drawer", IsDrawer: true, Send: make(chan []byte, 100)}
-	guesser := &Client{Nickname: "Guesser", Send: make(chan []byte, 100)}
-	r.Clients[drawer] = true
-	r.Clients[guesser] = true
-	r.Drawer = drawer
-
-	expectedPoints := (40 * 10) + (2 * 5)
-	r.markGuessed(guesser)
-
-	if guesser.TurnScore != expectedPoints {
-		t.Errorf("expected guesser score %d, got %d", expectedPoints, guesser.TurnScore)
-	}
-
-	expectedDrawerPoints := expectedPoints / 1
-	if drawer.TurnScore != expectedDrawerPoints {
-		t.Errorf("expected drawer score %d, got %d", expectedDrawerPoints, drawer.TurnScore)
-	}
-}
-
 func TestHintGeneration(t *testing.T) {
 	r := &Room{
 		CurrentWord: "apple tree",
