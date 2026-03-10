@@ -35,6 +35,7 @@ type Room struct {
 	Clients map[*Client]bool
 	Join    chan *Client
 	Leave   chan *Client
+	Quit    chan struct{}
 
 	State          GameState
 	RoundNumber    int
@@ -59,8 +60,9 @@ func NewRoom(id string, hub *Hub) *Room {
 		ID:        id,
 		Hub:       hub,
 		Clients:   make(map[*Client]bool),
-		Join:      make(chan *Client),
-		Leave:     make(chan *Client),
+		Join:      make(chan *Client, 32),
+		Leave:     make(chan *Client, 32),
+		Quit:      make(chan struct{}),
 		State:     StateLobby,
 		MaxRounds: 3,
 		VoteKicks: make(map[string]map[string]bool),
@@ -79,6 +81,8 @@ func (r *Room) Run() {
 			r.addClient(client)
 		case client := <-r.Leave:
 			r.removeClient(client)
+		case <-r.Quit:
+			return
 		}
 	}
 }
@@ -105,7 +109,8 @@ func (r *Room) changeState(newState GameState) {
 		r.CurrentWord = r.WordChoices[0]
 		r.HintIndices = make([]int, 0)
 		for i, ch := range r.CurrentWord {
-			if string(ch) != " " {
+			// Only hide alphabetic characters
+			if (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') {
 				r.HintIndices = append(r.HintIndices, i)
 			}
 		}
@@ -136,7 +141,10 @@ func (r *Room) changeState(newState GameState) {
 		r.DrawHistory = make([]map[string]interface{}, 0)
 		for c := range r.Clients {
 			c.Score += c.TurnScore
+			c.IsDrawer = false
+			c.GuessedWord = false
 		}
+		r.Drawer = nil
 		r.VoteKicks = make(map[string]map[string]bool)
 		r.broadcastMessageLocked([]byte(`{"type": "draw", "action": "clear"}`))
 		r.broadcastSystemMessageLocked(fmt.Sprintf("Turn over! The word was: %s", r.CurrentWord), "green")
@@ -144,6 +152,11 @@ func (r *Room) changeState(newState GameState) {
 		r.broadcastPlayerListLocked()
 		r.setTimeLeft(5)
 	case StateGameOver:
+		for c := range r.Clients {
+			c.IsDrawer = false
+			c.GuessedWord = false
+		}
+		r.Drawer = nil
 		r.broadcastSystemMessageLocked("Game Over!", "yellow")
 		r.broadcastGameStateLocked()
 		r.setTimeLeft(10)

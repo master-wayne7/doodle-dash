@@ -25,7 +25,7 @@ class PlayerList extends ConsumerWidget {
       if (i > 0 && sortedByScore[i].score < sortedByScore[i - 1].score) {
         currentRank = i + 1;
       }
-      rankMap[sortedByScore[i].nickname] = currentRank;
+      rankMap[sortedByScore[i].id] = currentRank;
     }
 
     return Container(
@@ -38,7 +38,7 @@ class PlayerList extends ConsumerWidget {
           final p = players[index];
           return PlayerListItem(
             player: p,
-            rank: rankMap[p.nickname] ?? 1,
+            rank: rankMap[p.id] ?? 1,
             isEven: index % 2 == 0,
             gameState: gameState,
             listWidth: width,

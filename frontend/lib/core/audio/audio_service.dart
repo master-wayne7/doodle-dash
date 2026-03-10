@@ -34,7 +34,9 @@ class AudioService {
   }
 
   AudioPlayer _getPlayer() {
-    final player = AudioPlayer(playerId: DateTime.now().millisecondsSinceEpoch.toString());
+    final player = AudioPlayer(
+      playerId: DateTime.now().millisecondsSinceEpoch.toString(),
+    );
 
     player.setPlayerMode(PlayerMode.lowLatency);
 
@@ -71,7 +73,9 @@ class AudioService {
 
   Future<void> _tickLoop() async {
     while (_isTicking) {
-      _tickPlayer = AudioPlayer(playerId: 'tick_${DateTime.now().millisecondsSinceEpoch}');
+      _tickPlayer = AudioPlayer(
+        playerId: 'tick_${DateTime.now().millisecondsSinceEpoch}',
+      );
       _tickPlayer!.setPlayerMode(PlayerMode.lowLatency);
 
       await _tickPlayer!.play(AssetSource('audio/tick.ogg'));
@@ -85,7 +89,7 @@ class AudioService {
       if (!_isTicking) break;
 
       // 200ms gap
-      await Future.delayed(const Duration(milliseconds: 400));
+      await Future.delayed(const Duration(milliseconds: 500));
     }
   }
 

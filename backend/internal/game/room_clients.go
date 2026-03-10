@@ -31,15 +31,19 @@ func (r *Room) removeClient(client *Client) {
 	r.mu.Lock()
 	if _, ok := r.Clients[client]; ok {
 		delete(r.Clients, client)
-		close(client.Send)
+		client.closeOnce.Do(func() {
+			close(client.Send)
+		})
 	}
 	numClients := len(r.Clients)
 	isDrawer := client == r.Drawer
 	state := r.State
 
 	if numClients == 0 {
+		roomID := r.ID
+		hub := r.Hub
 		r.mu.Unlock()
-		r.Hub.DeleteRoom <- r.ID
+		hub.DeleteRoom <- roomID
 		r.setTimeLeft(0)
 		return
 	}

@@ -13,7 +13,8 @@ class GameOverlayWrapper extends StatefulWidget {
   State<GameOverlayWrapper> createState() => _GameOverlayWrapperState();
 }
 
-class _GameOverlayWrapperState extends State<GameOverlayWrapper> with SingleTickerProviderStateMixin {
+class _GameOverlayWrapperState extends State<GameOverlayWrapper>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<Offset> _offsetAnimation;
   late Animation<double> _fadeAnimation;
@@ -21,7 +22,10 @@ class _GameOverlayWrapperState extends State<GameOverlayWrapper> with SingleTick
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(duration: const Duration(milliseconds: 600), vsync: this);
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 600),
+      vsync: this,
+    );
 
     _offsetAnimation = Tween<Offset>(
       begin: const Offset(0.0, -0.2), // Emerging from slightly above
@@ -82,12 +86,21 @@ class WordChoosingOverlay extends StatelessWidget {
         children: [
           Text(
             "$drawerName is choosing a word!",
-            style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.white),
+            style: const TextStyle(
+              fontSize: 32,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 24),
           if (avatar != null)
-            AvatarDisplay(colorIndex: avatar!.color, eyesIndex: avatar!.eyes, mouthIndex: avatar!.mouth, scale: 1.5)
+            AvatarDisplay(
+              colorIndex: avatar!.color,
+              eyesIndex: avatar!.eyes,
+              mouthIndex: avatar!.mouth,
+              scale: 1.5,
+            )
           else
             const CircularProgressIndicator(color: Colors.white),
         ],
@@ -102,7 +115,12 @@ class TurnEndLeaderboardOverlay extends StatelessWidget {
   final String word;
   final List<Player> players;
 
-  const TurnEndLeaderboardOverlay({super.key, required this.systemMessage, required this.word, required this.players});
+  const TurnEndLeaderboardOverlay({
+    super.key,
+    required this.systemMessage,
+    required this.word,
+    required this.players,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -115,18 +133,27 @@ class TurnEndLeaderboardOverlay extends StatelessWidget {
         children: [
           RichText(
             text: TextSpan(
-              style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.white70),
+              style: const TextStyle(
+                fontSize: 28,
+                fontWeight: FontWeight.bold,
+                color: Colors.white70,
+              ),
               children: [
                 const TextSpan(text: "The word was "),
                 TextSpan(
                   text: word,
-                  style: const TextStyle(color: Color(0xFFFFE082)), // Light yellow
+                  style: const TextStyle(
+                    color: Color(0xFFFFE082),
+                  ), // Light yellow
                 ),
               ],
             ),
           ),
           const SizedBox(height: 8),
-          const Text("Time is up!", style: TextStyle(fontSize: 20, color: Colors.white54)),
+          const Text(
+            "Time is up!",
+            style: TextStyle(fontSize: 20, color: Colors.white54),
+          ),
           const SizedBox(height: 32),
           SizedBox(
             width: 250,
@@ -140,14 +167,20 @@ class TurnEndLeaderboardOverlay extends StatelessWidget {
                       Expanded(
                         child: Text(
                           p.nickname,
-                          style: const TextStyle(fontSize: 18, color: Colors.white, fontWeight: FontWeight.w500),
+                          style: const TextStyle(
+                            fontSize: 18,
+                            color: Colors.white,
+                            fontWeight: FontWeight.w500,
+                          ),
                         ),
                       ),
                       Text(
                         "${isPositive ? '+' : ''}${p.turnScore}",
                         style: TextStyle(
                           fontSize: 18,
-                          color: isPositive ? Colors.green : Colors.red,
+                          color: isPositive
+                              ? const Color.fromARGB(255, 24, 217, 23)
+                              : const Color.fromARGB(255, 224, 21, 26),
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -168,7 +201,11 @@ class WordSelectionOverlay extends StatelessWidget {
   final List<String> words;
   final Function(String) onWordSelected;
 
-  const WordSelectionOverlay({super.key, required this.words, required this.onWordSelected});
+  const WordSelectionOverlay({
+    super.key,
+    required this.words,
+    required this.onWordSelected,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -178,7 +215,11 @@ class WordSelectionOverlay extends StatelessWidget {
         children: [
           const Text(
             "Choose a word",
-            style: TextStyle(fontSize: 32, fontWeight: FontWeight.w500, color: Colors.white),
+            style: TextStyle(
+              fontSize: 32,
+              fontWeight: FontWeight.w500,
+              color: Colors.white,
+            ),
           ),
           const SizedBox(height: 24),
           Wrap(
@@ -237,10 +278,17 @@ class _WordButtonState extends State<_WordButton> {
                         ),
                       ),
                       ColorFiltered(
-                        colorFilter: const ColorFilter.mode(Colors.black, BlendMode.clear),
+                        colorFilter: const ColorFilter.mode(
+                          Colors.black,
+                          BlendMode.clear,
+                        ),
                         child: Text(
                           widget.word,
-                          style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.black),
+                          style: const TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black,
+                          ),
                         ),
                       ),
                     ],
@@ -248,7 +296,11 @@ class _WordButtonState extends State<_WordButton> {
                 )
               : Text(
                   widget.word,
-                  style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white),
+                  style: const TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
                 ),
         ),
       ),
@@ -267,7 +319,11 @@ class MessageOverlay extends StatelessWidget {
     return Center(
       child: Text(
         message,
-        style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.white),
+        style: const TextStyle(
+          fontSize: 32,
+          fontWeight: FontWeight.bold,
+          color: Colors.white,
+        ),
         textAlign: TextAlign.center,
       ),
     );
@@ -288,7 +344,11 @@ class RoundOverlay extends StatelessWidget {
         children: [
           Text(
             'Round $round',
-            style: const TextStyle(fontSize: 48, fontWeight: FontWeight.bold, color: Colors.white),
+            style: const TextStyle(
+              fontSize: 48,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
           ),
         ],
       ),
@@ -304,7 +364,8 @@ class GameOverOverlay extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final sortedPlayers = List<Player>.from(players)..sort((a, b) => b.score.compareTo(a.score));
+    final sortedPlayers = List<Player>.from(players)
+      ..sort((a, b) => b.score.compareTo(a.score));
     final winners = sortedPlayers.take(3).toList();
     final others = sortedPlayers.skip(3).toList();
     final winner = winners.isNotEmpty ? winners[0] : null;
@@ -316,7 +377,11 @@ class GameOverOverlay extends StatelessWidget {
           if (winner != null)
             Text(
               "${winner.nickname} is the winner!",
-              style: const TextStyle(fontSize: 36, fontWeight: FontWeight.bold, color: Colors.white),
+              style: const TextStyle(
+                fontSize: 36,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
             ),
           const SizedBox(height: 48),
           _PodiumView(winners: winners),
@@ -335,8 +400,17 @@ class GameOverOverlay extends StatelessWidget {
                       mouthIndex: p.avatar.mouth,
                       scale: 1,
                     ),
-                    Text(p.nickname, style: const TextStyle(fontSize: 14, color: Colors.white)),
-                    Text("${p.score} pts", style: const TextStyle(fontSize: 12, color: Colors.white70)),
+                    Text(
+                      p.nickname,
+                      style: const TextStyle(fontSize: 14, color: Colors.white),
+                    ),
+                    Text(
+                      "${p.score} pts",
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: Colors.white70,
+                      ),
+                    ),
                   ],
                 );
               }).toList(),
@@ -389,7 +463,11 @@ class _PodiumView extends StatelessWidget {
                     Positioned(
                       right: -40,
                       bottom: 0,
-                      child: Image.asset('assets/images/trophy.gif', height: 80, fit: BoxFit.cover),
+                      child: Image.asset(
+                        'assets/images/trophy.gif',
+                        height: 80,
+                        fit: BoxFit.cover,
+                      ),
                     ),
                   AvatarDisplay(
                     colorIndex: player.avatar.color,
@@ -412,10 +490,20 @@ class _PodiumView extends StatelessWidget {
                     children: [
                       Text(
                         player.nickname,
-                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
                         textAlign: TextAlign.center,
                       ),
-                      Text("${player.score} points", style: const TextStyle(fontSize: 12, color: Colors.white70)),
+                      Text(
+                        "${player.score} points",
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Colors.white70,
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -453,7 +541,11 @@ class _PodiumPainter extends CustomPainter {
     final textPainter = TextPainter(
       text: TextSpan(
         text: label,
-        style: TextStyle(color: color, fontSize: 20, fontWeight: FontWeight.bold),
+        style: TextStyle(
+          color: color,
+          fontSize: 20,
+          fontWeight: FontWeight.bold,
+        ),
       ),
       textDirection: TextDirection.ltr,
     );

@@ -117,8 +117,28 @@ class _DrawingBoardState extends ConsumerState<DrawingBoard> {
     super.dispose();
   }
 
+  void _onTapDown(TapDownDetails details, BoxConstraints constraints) {
+    if (!widget.isDrawer || ref.read(gameProvider).state != GameState.drawing) return;
+    final x = details.localPosition.dx / constraints.maxWidth;
+    final y = details.localPosition.dy / constraints.maxHeight;
+
+    _currentPath = DrawnPath(points: [Offset(x, y)], color: _selectedColor, strokeWidth: _strokeWidth);
+    ref.read(gameProvider.notifier).sendDrawAction({
+      'action': 'start',
+      'dx': x,
+      'dy': y,
+      'color': _selectedColor.value,
+      'strokeWidth': _strokeWidth,
+    });
+    // Send immediate end to make it a dot
+    ref.read(gameProvider.notifier).sendDrawAction({'action': 'end'});
+    _paths.add(_currentPath!);
+    _currentPath = null;
+    setState(() {});
+  }
+
   void _onPanStart(DragStartDetails details, BoxConstraints constraints) {
-    if (!widget.isDrawer) return;
+    if (!widget.isDrawer || ref.read(gameProvider).state != GameState.drawing) return;
     final x = details.localPosition.dx / constraints.maxWidth;
     final y = details.localPosition.dy / constraints.maxHeight;
 
@@ -134,7 +154,7 @@ class _DrawingBoardState extends ConsumerState<DrawingBoard> {
   }
 
   void _onPanUpdate(DragUpdateDetails details, BoxConstraints constraints) {
-    if (!widget.isDrawer || _currentPath == null) {
+    if (!widget.isDrawer || _currentPath == null || ref.read(gameProvider).state != GameState.drawing) {
       return;
     }
     final x = details.localPosition.dx / constraints.maxWidth;
@@ -156,7 +176,7 @@ class _DrawingBoardState extends ConsumerState<DrawingBoard> {
   }
 
   void _clearBoard() {
-    if (!widget.isDrawer) return;
+    if (!widget.isDrawer || ref.read(gameProvider).state != GameState.drawing) return;
     _paths.clear();
     _currentPath = null;
     ref.read(gameProvider.notifier).sendDrawAction({'action': 'clear'});
@@ -164,7 +184,7 @@ class _DrawingBoardState extends ConsumerState<DrawingBoard> {
   }
 
   void _undoAction() {
-    if (!widget.isDrawer || _paths.isEmpty) return;
+    if (!widget.isDrawer || _paths.isEmpty || ref.read(gameProvider).state != GameState.drawing) return;
     // Basic local undo without full server history sync out of scope for now,
     // but we can pop local and send a clear + full redraw sequence if we want to be robust.
     // For simplicity, just pop local array.
@@ -293,6 +313,7 @@ class _DrawingBoardState extends ConsumerState<DrawingBoard> {
                   return Stack(
                     children: [
                       GestureDetector(
+                        onTapDown: widget.isDrawer ? (details) => _onTapDown(details, constraints) : null,
                         onPanStart: widget.isDrawer ? (details) => _onPanStart(details, constraints) : null,
                         onPanUpdate: widget.isDrawer ? (details) => _onPanUpdate(details, constraints) : null,
                         onPanEnd: widget.isDrawer ? _onPanEnd : null,
@@ -456,11 +477,22 @@ class DrawingPainter extends CustomPainter {
         ..strokeCap = StrokeCap.round
         ..strokeJoin = StrokeJoin.round
         ..style = PaintingStyle.stroke;
-      final path = Path()..moveTo(dp.points[0].dx * size.width, dp.points[0].dy * size.height);
-      for (int i = 1; i < dp.points.length; i++) {
-        path.lineTo(dp.points[i].dx * size.width, dp.points[i].dy * size.height);
+
+      if (dp.points.length == 1) {
+        // Draw as a dot
+        paint.style = PaintingStyle.fill;
+        canvas.drawCircle(
+          Offset(dp.points[0].dx * size.width, dp.points[0].dy * size.height),
+          dp.strokeWidth / 2,
+          paint,
+        );
+      } else {
+        final path = Path()..moveTo(dp.points[0].dx * size.width, dp.points[0].dy * size.height);
+        for (int i = 1; i < dp.points.length; i++) {
+          path.lineTo(dp.points[i].dx * size.width, dp.points[i].dy * size.height);
+        }
+        canvas.drawPath(path, paint);
       }
-      canvas.drawPath(path, paint);
     }
 
     for (var path in paths) {

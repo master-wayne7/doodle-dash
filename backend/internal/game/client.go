@@ -3,6 +3,7 @@ package game
 import (
 	"encoding/json"
 	"net/http"
+	"sync"
 	"time"
 
 	log "github.com/sirupsen/logrus"
@@ -45,6 +46,7 @@ type Client struct {
 	Voted       bool
 	Avatar      Avatar
 	GuessedAt   *time.Time
+	closeOnce   sync.Once
 }
 
 // ReadPump pumps messages from the websocket connection to the room.

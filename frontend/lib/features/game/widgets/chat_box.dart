@@ -1,3 +1,4 @@
+import 'package:doodle_dash/core/constants/colors.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:doodle_dash/features/game/providers/game_provider.dart';
@@ -63,9 +64,13 @@ class _ChatBoxState extends ConsumerState<ChatBox> {
           Expanded(
             child: ListView.builder(
               reverse: true,
-              itemCount: chatMessages.where((m) => m['isVote'] != 'true').length,
+              itemCount: chatMessages
+                  .where((m) => m['isVote'] != 'true')
+                  .length,
               itemBuilder: (context, index) {
-                final filtered = chatMessages.where((m) => m['isVote'] != 'true').toList();
+                final filtered = chatMessages
+                    .where((m) => m['isVote'] != 'true')
+                    .toList();
                 final msg = filtered[filtered.length - 1 - index];
                 final isSystem = msg['isSystem'] == 'true';
                 final isDark = msg['colorIndex'] == '0';
@@ -74,41 +79,46 @@ class _ChatBoxState extends ConsumerState<ChatBox> {
                 Color textColor;
                 switch (colorStr) {
                   case 'green':
-                    textColor = Colors.green.shade700;
+                    textColor = AppColors.chatTextGuessed;
                     break;
                   case 'red':
-                    textColor = Colors.red.shade700;
+                    textColor = AppColors.chatTextLeave;
                     break;
                   case 'blue':
-                    textColor = Colors.blue.shade700;
+                    textColor = AppColors.chatTextDrawing;
                     break;
                   case 'yellow':
-                    textColor = Colors.orange.shade700;
+                    textColor = AppColors.chatTextClose;
                     break;
                   case 'shadow':
-                    textColor = Colors.green.shade200;
+                    textColor = AppColors.chatTextGuessChat;
                     break;
                   default:
-                    textColor = Colors.black87;
+                    textColor = Colors.black;
                 }
 
                 return Container(
                   width: double.infinity,
-                  padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12.0,
+                    vertical: 8.0,
+                  ),
                   decoration: BoxDecoration(
                     color: msg['content'].toString().contains("guessed")
                         ? isDark
-                              ? Colors.green.shade200
-                              : Colors.green.shade100
+                              ? AppColors.chatBgGuessedAlt
+                              : AppColors.chatBgGuessedBase
                         : isDark
-                        ? Colors.grey.shade200
-                        : Colors.white,
+                        ? AppColors.chatBgAlt
+                        : AppColors.chatBgBase,
                   ),
                   child: RichText(
                     text: TextSpan(
                       style: TextStyle(
                         color: textColor,
-                        fontWeight: isSystem ? FontWeight.bold : FontWeight.normal,
+                        fontWeight: isSystem
+                            ? FontWeight.bold
+                            : FontWeight.normal,
                         fontFamily: 'Comic Sans MS',
                         fontSize: 14,
                       ),
@@ -139,7 +149,10 @@ class _ChatBoxState extends ConsumerState<ChatBox> {
                     decoration: const InputDecoration(
                       hintText: 'Type your chat here...',
                       border: OutlineInputBorder(),
-                      contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      contentPadding: EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
                     ),
                     onSubmitted: (_) => sendChat(ref),
                   ),

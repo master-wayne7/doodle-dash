@@ -6,6 +6,7 @@ import "time"
 func (r *Room) startNextRound() {
 	r.RoundNumber++
 	if r.RoundNumber > r.MaxRounds {
+		r.RoundNumber = r.MaxRounds
 		r.changeState(StateGameOver)
 		return
 	}
@@ -115,21 +116,25 @@ func (r *Room) runTimer() {
 	ticker := time.NewTicker(1 * time.Second)
 	defer ticker.Stop()
 	for {
-		<-ticker.C
-		r.mu.Lock()
-		r.tickerMutex.Lock()
-		if r.TimeLeft > 0 {
-			r.TimeLeft--
-			r.tickerMutex.Unlock()
-			r.broadcastTimerLocked()
+		select {
+		case <-ticker.C:
+			r.mu.Lock()
 			r.tickerMutex.Lock()
-			if r.TimeLeft == 0 {
-				go r.handleTimeout()
+			if r.TimeLeft > 0 {
+				r.TimeLeft--
+				r.tickerMutex.Unlock()
+				r.broadcastTimerLocked()
+				r.tickerMutex.Lock()
+				if r.TimeLeft == 0 {
+					go r.handleTimeout()
+				}
+				r.tickerMutex.Unlock()
+			} else {
+				r.tickerMutex.Unlock()
 			}
-			r.tickerMutex.Unlock()
-		} else {
-			r.tickerMutex.Unlock()
+			r.mu.Unlock()
+		case <-r.Quit:
+			return
 		}
-		r.mu.Unlock()
 	}
 }

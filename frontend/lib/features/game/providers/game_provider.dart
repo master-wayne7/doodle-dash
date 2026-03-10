@@ -14,6 +14,7 @@ class GameStateModel {
   final String? systemMessage;
   final List<Map<String, String>> chatMessages;
   final bool isDrawer;
+  final String myPlayerId;
   final String roomId;
   final String nickname;
   final int timeLeft;
@@ -32,6 +33,7 @@ class GameStateModel {
     this.systemMessage,
     this.chatMessages = const [],
     this.isDrawer = false,
+    this.myPlayerId = '',
     this.roomId = '',
     this.nickname = '',
     this.timeLeft = 0,
@@ -51,6 +53,7 @@ class GameStateModel {
     String? systemMessage,
     List<Map<String, String>>? chatMessages,
     bool? isDrawer,
+    String? myPlayerId,
     String? roomId,
     String? nickname,
     int? timeLeft,
@@ -69,6 +72,7 @@ class GameStateModel {
       systemMessage: systemMessage ?? this.systemMessage,
       chatMessages: chatMessages ?? this.chatMessages,
       isDrawer: isDrawer ?? this.isDrawer,
+      myPlayerId: myPlayerId ?? this.myPlayerId,
       roomId: roomId ?? this.roomId,
       nickname: nickname ?? this.nickname,
       timeLeft: timeLeft ?? this.timeLeft,
@@ -134,9 +138,9 @@ class GameNotifier extends Notifier<GameStateModel> {
         }
 
         final me = players.firstWhere(
-          (p) => p.nickname == state.nickname,
+          (p) => p.id == state.myPlayerId,
           orElse: () => Player(
-            id: '',
+            id: state.myPlayerId,
             nickname: state.nickname,
             score: 0,
             turnScore: 0,
@@ -159,10 +163,10 @@ class GameNotifier extends Notifier<GameStateModel> {
           ref.read(audioServiceProvider).stopTick();
 
           final me = state.players.firstWhere(
-            (p) => p.nickname == state.nickname,
+            (p) => p.id == state.myPlayerId,
             orElse: () => Player(
-              id: '',
-              nickname: '',
+              id: state.myPlayerId,
+              nickname: state.nickname,
               score: 0,
               turnScore: 0,
               isDrawer: false,
@@ -229,6 +233,7 @@ class GameNotifier extends Notifier<GameStateModel> {
         final newChats = List<Map<String, String>>.from(state.chatMessages)
           ..add({
             'sender': sender,
+            'sender_id': data['sender_id'] ?? '',
             'content': content,
             'isSystem': data['isSystem']?.toString() ?? 'false',
             'isShadow': data['isShadow']?.toString() ?? 'false',
@@ -240,7 +245,13 @@ class GameNotifier extends Notifier<GameStateModel> {
 
       case 'vote_update':
         final newChats = List<Map<String, String>>.from(state.chatMessages)
-          ..add({'sender': data['sender'], 'voteType': data['vote'], 'isVote': 'true', 'isSystem': 'false'});
+          ..add({
+            'sender': data['sender'],
+            'sender_id': data['sender_id'] ?? '',
+            'voteType': data['vote'],
+            'isVote': 'true',
+            'isSystem': 'false',
+          });
         state = state.copyWith(chatMessages: newChats);
         break;
 
@@ -265,8 +276,8 @@ class GameNotifier extends Notifier<GameStateModel> {
         break;
 
       case 'joined_room':
-        if (state.roomId.isEmpty && data['room_id'] != null) {
-          state = state.copyWith(roomId: data['room_id']);
+        if (data['room_id'] != null && data['player_id'] != null) {
+          state = state.copyWith(roomId: data['room_id'], myPlayerId: data['player_id']);
         }
         break;
     }

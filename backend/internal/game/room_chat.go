@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"math"
 	"sort"
-	"strings"
 	"time"
 )
 
@@ -32,7 +31,10 @@ func (r *Room) handleChat(c *Client, msg map[string]interface{}) {
 	content, _ := msg["content"].(string)
 
 	if r.State == StateDrawing && c != r.Drawer && !c.GuessedWord {
-		if strings.EqualFold(strings.TrimSpace(content), r.CurrentWord) {
+		normalizedGuess := normalizeWord(content)
+		normalizedTarget := normalizeWord(r.CurrentWord)
+
+		if normalizedGuess == normalizedTarget {
 			r.markGuessed(c)
 			return
 		}
@@ -49,11 +51,12 @@ func (r *Room) handleChat(c *Client, msg map[string]interface{}) {
 	}
 
 	b, _ := json.Marshal(map[string]interface{}{
-		"type":     "chat",
-		"sender":   c.Nickname,
-		"content":  content,
-		"isShadow": isShadow,
-		"color":    color,
+		"type":      "chat",
+		"sender":    c.Nickname,
+		"sender_id": c.ID,
+		"content":   content,
+		"isShadow":  isShadow,
+		"color":     color,
 	})
 
 	if isShadow == "true" {
@@ -150,7 +153,7 @@ func (r *Room) handleVote(c *Client, msg map[string]interface{}) {
 		}
 		r.broadcastSystemMessage(fmt.Sprintf("%s has %sd the drawing!", c.Nickname, voteType), color)
 		b, _ := json.Marshal(map[string]interface{}{
-			"type": "vote_update", "sender": c.Nickname, "vote": voteType,
+			"type": "vote_update", "sender": c.Nickname, "sender_id": c.ID, "vote": voteType,
 		})
 		r.broadcastMessage(b)
 		r.broadcastPlayerList()

@@ -24,9 +24,9 @@ func NewHub() *Hub {
 	return &Hub{
 		Rooms:      make(map[string]*Room),
 		Clients:    make(map[*Client]bool),
-		Register:   make(chan *Client),
-		Unregister: make(chan *Client),
-		DeleteRoom: make(chan string),
+		Register:   make(chan *Client, 256),
+		Unregister: make(chan *Client, 256),
+		DeleteRoom: make(chan string, 128),
 	}
 }
 
@@ -42,12 +42,17 @@ func (h *Hub) Run() {
 			h.mu.Lock()
 			if _, ok := h.Clients[client]; ok {
 				delete(h.Clients, client)
-				close(client.Send)
+				client.closeOnce.Do(func() {
+					close(client.Send)
+				})
 			}
 			h.mu.Unlock()
 		case roomID := <-h.DeleteRoom:
 			h.mu.Lock()
-			delete(h.Rooms, roomID)
+			if room, ok := h.Rooms[roomID]; ok {
+				close(room.Quit)
+				delete(h.Rooms, roomID)
+			}
 			h.mu.Unlock()
 		}
 	}
@@ -120,8 +125,9 @@ func (h *Hub) ProcessMessage(c *Client, msg map[string]interface{}) {
 			"nickname": nickname,
 			"room":     roomID,
 		}).Info("Player joined room")
-		c.Send <- []byte(`{"type": "joined_room", "room_id": "` + roomID + `"}`)
+		c.Send <- []byte(`{"type": "joined_room", "room_id": "` + roomID + `", "player_id": "` + c.ID + `"}`)
 
+		// Joining room is done outside the Hub lock to prevent deadlock
 		room.Join <- c
 	}
 }

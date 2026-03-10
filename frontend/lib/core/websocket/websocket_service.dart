@@ -14,36 +14,67 @@ final webSocketServiceProvider = Provider<WebSocketService>((ref) {
 
 class WebSocketService {
   WebSocketChannel? _channel;
-  final StreamController<Map<String, dynamic>> _messageController =
-      StreamController.broadcast();
+  final StreamController<Map<String, dynamic>> _messageController = StreamController.broadcast();
+  bool _isDisconnectedManually = false;
+  int _reconnectAttempts = 0;
+  String? _lastUrl;
 
   Stream<Map<String, dynamic>> get messageStream => _messageController.stream;
 
   void connect(String url) {
-    debugPrint('Connecting to $url ...');
-    _channel = WebSocketChannel.connect(Uri.parse(url));
+    _lastUrl = url;
+    _isDisconnectedManually = false;
+    _reconnectAttempts = 0;
+    _establishConnection();
+  }
 
-    _channel!.stream.listen(
-      (message) {
-        try {
-          // The backend might batch multiple messages together separated by a newline
-          final parts = message.toString().split('\n');
-          for (final part in parts) {
-            if (part.trim().isEmpty) continue;
-            final data = json.decode(part);
-            _messageController.add(data);
+  void _establishConnection() {
+    if (_lastUrl == null || _isDisconnectedManually) return;
+
+    debugPrint('Connecting to $_lastUrl ... (Attempt ${_reconnectAttempts + 1})');
+    try {
+      _channel = WebSocketChannel.connect(Uri.parse(_lastUrl!));
+
+      _channel!.stream.listen(
+        (message) {
+          _reconnectAttempts = 0; // Reset on successful message
+          try {
+            final parts = message.toString().split('\n');
+            for (final part in parts) {
+              if (part.trim().isEmpty) continue;
+              final data = json.decode(part);
+              _messageController.add(data);
+            }
+          } catch (e) {
+            debugPrint('Error decoding message: $e\nRaw message: $message');
           }
-        } catch (e) {
-          debugPrint('Error decoding message: $e\nRaw message: $message');
-        }
-      },
-      onError: (error) {
-        debugPrint('WebSocket Error: $error');
-      },
-      onDone: () {
-        debugPrint('WebSocket Disconnected');
-      },
-    );
+        },
+        onError: (error) {
+          debugPrint('WebSocket Error: $error');
+          _reconnect();
+        },
+        onDone: () {
+          if (!_isDisconnectedManually) {
+            debugPrint('WebSocket Disconnected. Reconnecting...');
+            _reconnect();
+          }
+        },
+      );
+    } catch (e) {
+      debugPrint('Connection error: $e');
+      _reconnect();
+    }
+  }
+
+  void _reconnect() {
+    if (_isDisconnectedManually) return;
+
+    _reconnectAttempts++;
+    // Exponential backoff: 1s, 2s, 4s, 8s, up to 30s
+    final delay = Duration(seconds: (1 << (_reconnectAttempts > 5 ? 5 : _reconnectAttempts)).clamp(1, 30));
+
+    debugPrint('Reconnecting in ${delay.inSeconds} seconds...');
+    Timer(delay, _establishConnection);
   }
 
   void sendMessage(Map<String, dynamic> data) {
@@ -55,6 +86,7 @@ class WebSocketService {
   }
 
   void disconnect() {
+    _isDisconnectedManually = true;
     _channel?.sink.close();
     _channel = null;
     _messageController.close();

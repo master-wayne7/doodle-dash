@@ -61,10 +61,11 @@ class TopBar extends ConsumerWidget {
                 ],
               ),
               const SizedBox(width: 16),
-              Text(
-                'Round ${gameStateModel.round} of ${gameStateModel.maxRounds}',
-                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
+              if (gameState != GameState.gameOver)
+                Text(
+                  'Round ${gameStateModel.round} of ${gameStateModel.maxRounds}',
+                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
             ],
           ),
 

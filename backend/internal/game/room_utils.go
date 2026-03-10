@@ -98,15 +98,30 @@ func (r *Room) getHintLocked(isDrawer bool) string {
 	}
 	hint := ""
 	for i, ch := range word {
-		if string(ch) == " " {
-			hint += "  "
-		} else {
+		if (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') {
 			if revealedSet[i] {
 				hint += string(ch) + " "
 			} else {
 				hint += "_ "
 			}
+		} else if string(ch) == " " {
+			hint += "  "
+		} else {
+			// Reveal special characters (dash, apostrophe, etc.) by default
+			hint += string(ch) + " "
 		}
 	}
 	return strings.TrimSpace(hint)
+}
+
+// / normalizeWord removes all symbols except alphanumeric characters and spaces.
+func normalizeWord(s string) string {
+	var b strings.Builder
+	for _, r := range strings.ToLower(strings.TrimSpace(s)) {
+		if (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9') || r == ' ' {
+			b.WriteRune(r)
+		}
+	}
+	// Return normalized string, trimming extra whitespace
+	return b.String()
 }
