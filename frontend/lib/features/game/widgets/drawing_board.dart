@@ -1,20 +1,28 @@
 import 'dart:async';
+import 'package:doodle_dash/core/constants/colors.dart';
+import 'package:doodle_dash/core/utils/drawing_painter.dart';
+import 'package:doodle_dash/features/game/models/drawn_path.dart';
+import 'package:doodle_dash/features/shared/widgets/vote_button.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:doodle_dash/core/websocket/websocket_service.dart';
 import 'package:doodle_dash/features/game/providers/game_provider.dart';
 import 'package:doodle_dash/features/game/models/game_state.dart';
 
-/// Represents a single continuous stroke drawn on the canvas.
-class DrawnPath {
-  final List<Offset> points;
-  final Color color;
-  final double strokeWidth;
+// ─────────────────────────────────────────────────────────────────────────────
+// DRAWING BOARD WIDGET
+// ─────────────────────────────────────────────────────────────────────────────
 
-  DrawnPath({required this.points, required this.color, required this.strokeWidth});
-}
-
-/// The interactive canvas area where the current drawer sketches and others view the drawing in real-time.
+/// The interactive canvas area where the current drawer sketches and others
+/// view the drawing in real-time.
+///
+/// - If [isDrawer] is true, touch input is enabled and the toolbar is shown.
+/// - If [isDrawer] is false, the canvas is read-only and vote buttons appear.
+///
+/// ## Rendering layers (bottom → top)
+///
+/// 1. **[DrawingPainter]** inside a [RepaintBoundary] — vector strokes.
+/// 2. Vote buttons (non-drawer only, floating overlay).
 class DrawingBoard extends ConsumerStatefulWidget {
   final bool isDrawer;
   const DrawingBoard({super.key, required this.isDrawer});
@@ -24,43 +32,34 @@ class DrawingBoard extends ConsumerStatefulWidget {
 }
 
 class _DrawingBoardState extends ConsumerState<DrawingBoard> {
+  // ── Vector drawing state ──────────────────────────────────────────────────
+
+  /// All committed strokes rendered by [DrawingPainter].
   final List<DrawnPath> _paths = [];
+
+  /// The stroke currently being drawn (not yet committed to [_paths]).
   DrawnPath? _currentPath;
+
+  // ── Tool state ────────────────────────────────────────────────────────────
+
   Color _selectedColor = Colors.black;
   double _strokeWidth = 5.0;
   String _activeTool = 'pen'; // 'pen' or 'fill'
+
+  // ── WebSocket subscription ────────────────────────────────────────────────
+
+  /// Direct subscription to the raw WebSocket stream, bypassing Riverpod to
+  /// avoid full-widget rebuilds on every pointer/draw event.
   StreamSubscription? _sub;
+
+  // ── Brush size overlay ────────────────────────────────────────────────────
+
   final LayerLink _brushSizeLink = LayerLink();
   OverlayEntry? _brushSizeOverlay;
 
-  static const List<Color> _palette = [
-    Color.fromARGB(255, 255, 255, 255),
-    Color.fromARGB(255, 0, 0, 0),
-    Color.fromARGB(255, 193, 193, 193),
-    Color.fromARGB(255, 80, 80, 80),
-    Color.fromARGB(255, 239, 19, 11),
-    Color.fromARGB(255, 116, 11, 7),
-    Color.fromARGB(255, 255, 113, 0),
-    Color.fromARGB(255, 194, 56, 0),
-    Color.fromARGB(255, 255, 228, 0),
-    Color.fromARGB(255, 232, 162, 0),
-    Color.fromARGB(255, 0, 204, 0),
-    Color.fromARGB(255, 0, 70, 25),
-    Color.fromARGB(255, 0, 255, 145),
-    Color.fromARGB(255, 0, 120, 93),
-    Color.fromARGB(255, 0, 178, 255),
-    Color.fromARGB(255, 0, 86, 158),
-    Color.fromARGB(255, 35, 31, 211),
-    Color.fromARGB(255, 14, 8, 101),
-    Color.fromARGB(255, 163, 0, 186),
-    Color.fromARGB(255, 85, 0, 105),
-    Color.fromARGB(255, 223, 105, 167),
-    Color.fromARGB(255, 135, 53, 84),
-    Color.fromARGB(255, 255, 172, 142),
-    Color.fromARGB(255, 204, 119, 77),
-    Color.fromARGB(255, 160, 82, 45),
-    Color.fromARGB(255, 99, 48, 13),
-  ];
+  // ─────────────────────────────────────────────────────────────────────────
+  // LIFECYCLE
+  // ─────────────────────────────────────────────────────────────────────────
 
   @override
   void initState() {
@@ -80,10 +79,33 @@ class _DrawingBoardState extends ConsumerState<DrawingBoard> {
     });
   }
 
+  @override
+  void dispose() {
+    _sub?.cancel();
+    _hideBrushSizeOverlay();
+    super.dispose();
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // REMOTE DRAW ACTION HANDLER
+  // ─────────────────────────────────────────────────────────────────────────
+
+  /// Applies a draw action received from the server on non-drawer clients.
+  ///
+  /// Supported actions:
+  /// - `start`  — begins a new remote stroke.
+  /// - `update` — appends a point to the active remote stroke.
+  /// - `end`    — commits the active stroke to [_paths].
+  /// - `clear`  — resets all canvas state (paths, fills, history).
   void _handleDrawAction(Map<String, dynamic> data) {
     if (data['action'] == 'start') {
       _currentPath = DrawnPath(
-        points: [Offset((data['dx'] as num).toDouble(), (data['dy'] as num).toDouble())],
+        points: [
+          Offset(
+            (data['dx'] as num).toDouble(),
+            (data['dy'] as num).toDouble(),
+          ),
+        ],
         color: Color(data['color']),
         strokeWidth: (data['strokeWidth'] as num).toDouble(),
       );
@@ -91,7 +113,9 @@ class _DrawingBoardState extends ConsumerState<DrawingBoard> {
         setState(() {});
       }
     } else if (data['action'] == 'update' && _currentPath != null) {
-      _currentPath!.points.add(Offset((data['dx'] as num).toDouble(), (data['dy'] as num).toDouble()));
+      _currentPath!.points.add(
+        Offset((data['dx'] as num).toDouble(), (data['dy'] as num).toDouble()),
+      );
       if (mounted) {
         setState(() {});
       }
@@ -110,24 +134,28 @@ class _DrawingBoardState extends ConsumerState<DrawingBoard> {
     }
   }
 
-  @override
-  void dispose() {
-    _sub?.cancel();
-    _hideBrushSizeOverlay();
-    super.dispose();
-  }
+  // ─────────────────────────────────────────────────────────────────────────
+  // LOCAL GESTURE HANDLERS (drawer only)
+  // ─────────────────────────────────────────────────────────────────────────
 
+  /// Handles a single tap (dot) from the drawer.
   void _onTapDown(TapDownDetails details, BoxConstraints constraints) {
-    if (!widget.isDrawer || ref.read(gameProvider).state != GameState.drawing) return;
+    if (!widget.isDrawer || ref.read(gameProvider).state != GameState.drawing) {
+      return;
+    }
     final x = details.localPosition.dx / constraints.maxWidth;
     final y = details.localPosition.dy / constraints.maxHeight;
 
-    _currentPath = DrawnPath(points: [Offset(x, y)], color: _selectedColor, strokeWidth: _strokeWidth);
+    _currentPath = DrawnPath(
+      points: [Offset(x, y)],
+      color: _selectedColor,
+      strokeWidth: _strokeWidth,
+    );
     ref.read(gameProvider.notifier).sendDrawAction({
       'action': 'start',
       'dx': x,
       'dy': y,
-      'color': _selectedColor.value,
+      'color': _selectedColor.toARGB32(),
       'strokeWidth': _strokeWidth,
     });
     // Send immediate end to make it a dot
@@ -137,34 +165,49 @@ class _DrawingBoardState extends ConsumerState<DrawingBoard> {
     setState(() {});
   }
 
+  /// Begins a new stroke at the drag start position.
   void _onPanStart(DragStartDetails details, BoxConstraints constraints) {
-    if (!widget.isDrawer || ref.read(gameProvider).state != GameState.drawing) return;
+    if (!widget.isDrawer || ref.read(gameProvider).state != GameState.drawing) {
+      return;
+    }
     final x = details.localPosition.dx / constraints.maxWidth;
     final y = details.localPosition.dy / constraints.maxHeight;
 
-    _currentPath = DrawnPath(points: [Offset(x, y)], color: _selectedColor, strokeWidth: _strokeWidth);
+    _currentPath = DrawnPath(
+      points: [Offset(x, y)],
+      color: _selectedColor,
+      strokeWidth: _strokeWidth,
+    );
     ref.read(gameProvider.notifier).sendDrawAction({
       'action': 'start',
       'dx': x,
       'dy': y,
-      'color': _selectedColor.value,
+      'color': _selectedColor.toARGB32(),
       'strokeWidth': _strokeWidth,
     });
     setState(() {});
   }
 
+  /// Appends a point to the current stroke as the user drags.
   void _onPanUpdate(DragUpdateDetails details, BoxConstraints constraints) {
-    if (!widget.isDrawer || _currentPath == null || ref.read(gameProvider).state != GameState.drawing) {
+    if (!widget.isDrawer ||
+        _currentPath == null ||
+        ref.read(gameProvider).state != GameState.drawing) {
       return;
     }
     final x = details.localPosition.dx / constraints.maxWidth;
     final y = details.localPosition.dy / constraints.maxHeight;
 
     _currentPath!.points.add(Offset(x, y));
-    ref.read(gameProvider.notifier).sendDrawAction({'action': 'update', 'dx': x, 'dy': y});
+    ref.read(gameProvider.notifier).sendDrawAction({
+      'action': 'update',
+      'dx': x,
+      'dy': y,
+    });
     setState(() {});
   }
 
+  /// Commits the current stroke when the drag ends.
   void _onPanEnd(DragEndDetails details) {
     if (!widget.isDrawer || _currentPath == null) {
       return;
@@ -175,16 +218,28 @@ class _DrawingBoardState extends ConsumerState<DrawingBoard> {
     setState(() {});
   }
 
+  // ─────────────────────────────────────────────────────────────────────────
+  // TOOLBAR ACTIONS
+  // ─────────────────────────────────────────────────────────────────────────
+
+  /// Clears all canvas state and broadcasts `clear` to all clients.
   void _clearBoard() {
-    if (!widget.isDrawer || ref.read(gameProvider).state != GameState.drawing) return;
+    if (!widget.isDrawer || ref.read(gameProvider).state != GameState.drawing) {
+      return;
+    }
     _paths.clear();
     _currentPath = null;
     ref.read(gameProvider.notifier).sendDrawAction({'action': 'clear'});
     setState(() {});
   }
 
+  /// Undoes the last [CanvasAction] and replays the remaining history.
   void _undoAction() {
-    if (!widget.isDrawer || _paths.isEmpty || ref.read(gameProvider).state != GameState.drawing) return;
+    if (!widget.isDrawer ||
+        _paths.isEmpty ||
+        ref.read(gameProvider).state != GameState.drawing) {
+      return;
+    }
     // Basic local undo without full server history sync out of scope for now,
     // but we can pop local and send a clear + full redraw sequence if we want to be robust.
     // For simplicity, just pop local array.
@@ -195,7 +250,7 @@ class _DrawingBoardState extends ConsumerState<DrawingBoard> {
         'action': 'start',
         'dx': path.points.first.dx,
         'dy': path.points.first.dy,
-        'color': path.color.value,
+        'color': path.color.toARGB32(),
         'strokeWidth': path.strokeWidth,
       });
       for (int i = 1; i < path.points.length; i++) {
@@ -210,6 +265,9 @@ class _DrawingBoardState extends ConsumerState<DrawingBoard> {
     setState(() {});
   }
 
+  // ─────────────────────────────────────────────────────────────────────────
+  // BRUSH SIZE OVERLAY
+  // ─────────────────────────────────────────────────────────────────────────
   void _toggleBrushSizeOverlay() {
     if (_brushSizeOverlay != null) {
       _hideBrushSizeOverlay();
@@ -223,6 +281,8 @@ class _DrawingBoardState extends ConsumerState<DrawingBoard> {
     _brushSizeOverlay = null;
   }
 
+  /// Inserts a floating overlay with four selectable stroke widths above the
+  /// brush size button. Tapping outside dismisses it.
   void _showBrushSizeOverlay() {
     final sizes = [4.0, 10.0, 20.0, 32.0];
     _brushSizeOverlay = OverlayEntry(
@@ -242,7 +302,10 @@ class _DrawingBoardState extends ConsumerState<DrawingBoard> {
                   borderRadius: BorderRadius.circular(4),
                   child: Container(
                     padding: const EdgeInsets.symmetric(vertical: 8),
-                    decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(4)),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(4),
+                    ),
                     width: 48,
                     height: 150,
                     child: Column(
@@ -257,12 +320,17 @@ class _DrawingBoardState extends ConsumerState<DrawingBoard> {
                               child: Container(
                                 width: 32,
                                 height: 32,
-                                color: _strokeWidth == s ? Colors.grey.shade200 : Colors.transparent,
+                                color: _strokeWidth == s
+                                    ? Colors.grey.shade200
+                                    : Colors.transparent,
                                 child: Center(
                                   child: Container(
                                     width: s,
                                     height: s,
-                                    decoration: const BoxDecoration(color: Colors.black, shape: BoxShape.circle),
+                                    decoration: const BoxDecoration(
+                                      color: Colors.black,
+                                      shape: BoxShape.circle,
+                                    ),
                                   ),
                                 ),
                               ),
@@ -283,10 +351,17 @@ class _DrawingBoardState extends ConsumerState<DrawingBoard> {
     Overlay.of(context).insert(_brushSizeOverlay!);
   }
 
+  // ─────────────────────────────────────────────────────────────────────────
+  // BUILD
+  // ─────────────────────────────────────────────────────────────────────────
+
   @override
   Widget build(BuildContext context) {
+    // Clear the canvas when the drawing phase ends so the board is ready for
+    // the next drawer without leftover strokes.
     ref.listen(gameProvider, (previous, next) {
-      if (previous?.state == GameState.drawing && next.state != GameState.drawing) {
+      if (previous?.state == GameState.drawing &&
+          next.state != GameState.drawing) {
         if (mounted) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
             setState(() {
@@ -313,32 +388,49 @@ class _DrawingBoardState extends ConsumerState<DrawingBoard> {
                   return Stack(
                     children: [
                       GestureDetector(
-                        onTapDown: widget.isDrawer ? (details) => _onTapDown(details, constraints) : null,
-                        onPanStart: widget.isDrawer ? (details) => _onPanStart(details, constraints) : null,
-                        onPanUpdate: widget.isDrawer ? (details) => _onPanUpdate(details, constraints) : null,
+                        onTapDown: widget.isDrawer
+                            ? (details) => _onTapDown(details, constraints)
+                            : null,
+                        onPanStart: widget.isDrawer
+                            ? (details) => _onPanStart(details, constraints)
+                            : null,
+                        onPanUpdate: widget.isDrawer
+                            ? (details) => _onPanUpdate(details, constraints)
+                            : null,
                         onPanEnd: widget.isDrawer ? _onPanEnd : null,
                         child: CustomPaint(
-                          painter: DrawingPainter(paths: _paths, currentPath: _currentPath),
+                          painter: DrawingPainter(
+                            paths: _paths,
+                            currentPath: _currentPath,
+                          ),
                           size: Size.infinite,
                         ),
                       ),
                       if (!widget.isDrawer &&
                           gameState.state == GameState.drawing &&
-                          !gameState.players.firstWhere((p) => p.nickname == gameState.nickname).voted)
+                          !gameState.players
+                              .firstWhere(
+                                (p) => p.nickname == gameState.nickname,
+                              )
+                              .voted)
                         Positioned(
                           top: 10,
                           right: 10,
                           child: Row(
                             children: [
-                              _VoteButton(
+                              VoteButton(
                                 image: 'assets/images/thumbsup.gif',
 
-                                onTap: () => ref.read(gameProvider.notifier).vote('like'),
+                                onTap: () => ref
+                                    .read(gameProvider.notifier)
+                                    .vote('like'),
                               ),
                               const SizedBox(width: 8),
-                              _VoteButton(
+                              VoteButton(
                                 image: 'assets/images/thumbsdown.gif',
-                                onTap: () => ref.read(gameProvider.notifier).vote('dislike'),
+                                onTap: () => ref
+                                    .read(gameProvider.notifier)
+                                    .vote('dislike'),
                               ),
                             ],
                           ),
@@ -350,10 +442,17 @@ class _DrawingBoardState extends ConsumerState<DrawingBoard> {
             ),
           ),
         ),
-        if (widget.isDrawer) _buildToolbar() else Container(height: 52, color: Colors.transparent),
+        if (widget.isDrawer)
+          _buildToolbar()
+        else
+          Container(height: 52, color: Colors.transparent),
       ],
     );
   }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // TOOLBAR
+  // ─────────────────────────────────────────────────────────────────────────
 
   Widget _buildToolbar() {
     return Container(
@@ -381,7 +480,10 @@ class _DrawingBoardState extends ConsumerState<DrawingBoard> {
                   final topColorIdx = colIndex * 2;
                   final bottomColorIdx = topColorIdx + 1;
                   return Column(
-                    children: [_buildColorBox(_palette[topColorIdx]), _buildColorBox(_palette[bottomColorIdx])],
+                    children: [
+                      _buildColorBox(AppColors.palette[topColorIdx]),
+                      _buildColorBox(AppColors.palette[bottomColorIdx]),
+                    ],
                   );
                 }),
               ),
@@ -410,7 +512,10 @@ class _DrawingBoardState extends ConsumerState<DrawingBoard> {
                       child: Container(
                         width: _strokeWidth,
                         height: _strokeWidth,
-                        decoration: const BoxDecoration(color: Colors.black, shape: BoxShape.circle),
+                        decoration: const BoxDecoration(
+                          color: Colors.black,
+                          shape: BoxShape.circle,
+                        ),
                       ),
                     ),
                   ),
@@ -419,13 +524,27 @@ class _DrawingBoardState extends ConsumerState<DrawingBoard> {
               const SizedBox(width: 16),
 
               // Tool Icons
-              _buildToolIcon('assets/images/pen.gif', 'pen', onTap: () => setState(() => _activeTool = 'pen')),
+              _buildToolIcon(
+                'assets/images/pen.gif',
+                'pen',
+                onTap: () => setState(() => _activeTool = 'pen'),
+              ),
               const SizedBox(width: 16),
 
               // Action Icons
-              _buildToolIcon('assets/images/undo.gif', '', onTap: _undoAction, isButton: true),
+              _buildToolIcon(
+                'assets/images/undo.gif',
+                '',
+                onTap: _undoAction,
+                isButton: true,
+              ),
               const SizedBox(width: 4),
-              _buildToolIcon('assets/images/clear.gif', '', onTap: _clearBoard, isButton: true),
+              _buildToolIcon(
+                'assets/images/clear.gif',
+                '',
+                onTap: _clearBoard,
+                isButton: true,
+              ),
             ],
           ),
         ],
@@ -436,11 +555,25 @@ class _DrawingBoardState extends ConsumerState<DrawingBoard> {
   Widget _buildColorBox(Color color) {
     return GestureDetector(
       onTap: () => setState(() => _selectedColor = color),
-      child: Container(width: 18, height: 18, decoration: BoxDecoration(color: color)),
+      child: Container(
+        width: 18,
+        height: 18,
+        decoration: BoxDecoration(color: color),
+      ),
     );
   }
 
-  Widget _buildToolIcon(String imagePath, String toolId, {required VoidCallback onTap, bool isButton = false}) {
+  /// Builds a single toolbar icon button.
+  ///
+  /// [toolId] drives the active-highlight (purple border) when it matches
+  /// [_activeTool]. [isButton] disables highlighting for stateless action
+  /// buttons like undo and clear.
+  Widget _buildToolIcon(
+    String imagePath,
+    String toolId, {
+    required VoidCallback onTap,
+    bool isButton = false,
+  }) {
     final isActive = !isButton && _activeTool == toolId;
     return GestureDetector(
       onTap: onTap,
@@ -456,65 +589,5 @@ class _DrawingBoardState extends ConsumerState<DrawingBoard> {
         child: Center(child: Image.asset(imagePath, width: 30, height: 30)),
       ),
     );
-  }
-}
-
-/// A custom painter that renders all completed paths and the currently active path onto the canvas.
-class DrawingPainter extends CustomPainter {
-  final List<DrawnPath> paths;
-  final DrawnPath? currentPath;
-
-  DrawingPainter({required this.paths, required this.currentPath});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    canvas.drawRect(Rect.fromLTWH(0, 0, size.width, size.height), Paint()..color = Colors.white);
-    void drawPath(DrawnPath dp) {
-      if (dp.points.isEmpty) return;
-      final paint = Paint()
-        ..color = dp.color
-        ..strokeWidth = dp.strokeWidth
-        ..strokeCap = StrokeCap.round
-        ..strokeJoin = StrokeJoin.round
-        ..style = PaintingStyle.stroke;
-
-      if (dp.points.length == 1) {
-        // Draw as a dot
-        paint.style = PaintingStyle.fill;
-        canvas.drawCircle(
-          Offset(dp.points[0].dx * size.width, dp.points[0].dy * size.height),
-          dp.strokeWidth / 2,
-          paint,
-        );
-      } else {
-        final path = Path()..moveTo(dp.points[0].dx * size.width, dp.points[0].dy * size.height);
-        for (int i = 1; i < dp.points.length; i++) {
-          path.lineTo(dp.points[i].dx * size.width, dp.points[i].dy * size.height);
-        }
-        canvas.drawPath(path, paint);
-      }
-    }
-
-    for (var path in paths) {
-      drawPath(path);
-    }
-    if (currentPath != null) {
-      drawPath(currentPath!);
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant DrawingPainter oldDelegate) => true;
-}
-
-class _VoteButton extends StatelessWidget {
-  final String image;
-  final VoidCallback onTap;
-
-  const _VoteButton({required this.image, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(onTap: onTap, child: Image.asset(image, width: 60, height: 60));
   }
 }

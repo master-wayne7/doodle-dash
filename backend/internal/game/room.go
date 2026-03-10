@@ -8,7 +8,7 @@ import (
 	"time"
 )
 
-// / GameState represents the current phase of the game room.
+// GameState represents the current phase of the game room.
 type GameState string
 
 const (
@@ -28,7 +28,7 @@ const (
 	StateGameOver GameState = "game_over"
 )
 
-// / Room represents a single game session/lobby containing multiple clients.
+// Room represents a single game session/lobby containing multiple clients.
 type Room struct {
 	ID      string
 	Hub     *Hub
@@ -54,7 +54,7 @@ type Room struct {
 	mu          sync.Mutex
 }
 
-// / NewRoom initializes and returns a new default Room instance.
+// NewRoom initializes and returns a new default Room instance.
 func NewRoom(id string, hub *Hub) *Room {
 	r := &Room{
 		ID:        id,
@@ -73,7 +73,7 @@ func NewRoom(id string, hub *Hub) *Room {
 	return r
 }
 
-// / Run starts the room's main event loop, listening for join and leave events.
+// Run starts the room's main event loop, listening for join and leave events.
 func (r *Room) Run() {
 	for {
 		select {
@@ -87,7 +87,7 @@ func (r *Room) Run() {
 	}
 }
 
-// / changeState securely transitions the room into a new game state and triggers the required setup for that state.
+// changeState securely transitions the room into a new game state and triggers the required setup for that state.
 func (r *Room) changeState(newState GameState) {
 	r.mu.Lock()
 	r.State = newState
@@ -157,7 +157,7 @@ func (r *Room) changeState(newState GameState) {
 			c.GuessedWord = false
 		}
 		r.Drawer = nil
-		r.broadcastSystemMessageLocked("Game Over!", "yellow")
+		r.broadcastSystemMessageLocked("Game Over!", "orange")
 		r.broadcastGameStateLocked()
 		r.setTimeLeft(10)
 	}

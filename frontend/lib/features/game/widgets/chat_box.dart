@@ -64,13 +64,9 @@ class _ChatBoxState extends ConsumerState<ChatBox> {
           Expanded(
             child: ListView.builder(
               reverse: true,
-              itemCount: chatMessages
-                  .where((m) => m['isVote'] != 'true')
-                  .length,
+              itemCount: chatMessages.where((m) => m['isVote'] != 'true').length,
               itemBuilder: (context, index) {
-                final filtered = chatMessages
-                    .where((m) => m['isVote'] != 'true')
-                    .toList();
+                final filtered = chatMessages.where((m) => m['isVote'] != 'true').toList();
                 final msg = filtered[filtered.length - 1 - index];
                 final isSystem = msg['isSystem'] == 'true';
                 final isDark = msg['colorIndex'] == '0';
@@ -93,16 +89,16 @@ class _ChatBoxState extends ConsumerState<ChatBox> {
                   case 'shadow':
                     textColor = AppColors.chatTextGuessChat;
                     break;
+                  case 'orange':
+                    textColor = AppColors.chatTextOwner;
+                    break;
                   default:
                     textColor = Colors.black;
                 }
 
                 return Container(
                   width: double.infinity,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12.0,
-                    vertical: 8.0,
-                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
                   decoration: BoxDecoration(
                     color: msg['content'].toString().contains("guessed")
                         ? isDark
@@ -116,9 +112,7 @@ class _ChatBoxState extends ConsumerState<ChatBox> {
                     text: TextSpan(
                       style: TextStyle(
                         color: textColor,
-                        fontWeight: isSystem
-                            ? FontWeight.bold
-                            : FontWeight.normal,
+                        fontWeight: isSystem ? FontWeight.bold : FontWeight.normal,
                         fontFamily: 'Comic Sans MS',
                         fontSize: 14,
                       ),
@@ -149,10 +143,7 @@ class _ChatBoxState extends ConsumerState<ChatBox> {
                     decoration: const InputDecoration(
                       hintText: 'Type your chat here...',
                       border: OutlineInputBorder(),
-                      contentPadding: EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 8,
-                      ),
+                      contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                     ),
                     onSubmitted: (_) => sendChat(ref),
                   ),
