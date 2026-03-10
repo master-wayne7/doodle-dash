@@ -1,11 +1,11 @@
 {
-    "name": "frontend",
-    "short_name": "frontend",
+    "name": "Doodle Dash",
+    "short_name": "Doodle Dash",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#5A4AE3",
+    "theme_color": "#5A4AE3",
+    "description": "A vibrant real-time multi-player drawing and guessing game.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [
